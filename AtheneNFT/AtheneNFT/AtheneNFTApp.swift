@@ -7,7 +7,7 @@ struct AtheneNFTApp: App {
     
     @StateObject private var fontManager = FontManager.shared
     
-    var body: some Scene {
+     var body: some Scene {
         WindowGroup {
             MainTabView()
                 .environmentObject(fontManager)
