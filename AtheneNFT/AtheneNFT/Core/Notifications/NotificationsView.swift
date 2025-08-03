@@ -19,13 +19,13 @@ struct NotificationsView: View {
                         ZStack(alignment: .leading) {
                             Rectangle()
                                 .foregroundColor(.clear)
-                                .frame(height: dynamicSize(base: 64, geometry: geometry))
+                                .frame(height: DynamicSizing.size(base: 64, geometry: geometry))
                                 .background(.black)
                             
                             Text("Notifications")
-                                .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 32, geometry: geometry)).weight(.bold))
+                                .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 32, geometry: geometry)).weight(.bold))
                                 .foregroundColor(.white)
-                                .padding(.leading, dynamicPadding(base: 20, geometry: geometry))
+                                .padding(.leading, DynamicSizing.padding(base: 20, geometry: geometry))
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -162,25 +162,6 @@ struct NotificationsView: View {
             isRefreshing = false
         }
     }
-    
-    // Dynamic sizing helpers
-    private func dynamicSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicFontSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicPadding(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
 }
 
 struct NotificationSectionHeader: View {
@@ -281,8 +262,8 @@ struct NotificationRow: View {
                 }
             }
         }
-        .padding(.horizontal, dynamicPadding(base: 20))
-        .padding(.vertical, dynamicPadding(base: 14))
+        .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
+        .padding(.vertical, DynamicSizing.padding(base: 14, geometry: geometry))
         .frame(maxWidth: .infinity)
         .background(Color.black)
         .overlay(
@@ -291,12 +272,5 @@ struct NotificationRow: View {
                 .foregroundColor(Color.gray.opacity(0.3)),
             alignment: .bottom
         )
-    }
-    
-    // Dynamic sizing helpers
-    private func dynamicPadding(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
     }
 }

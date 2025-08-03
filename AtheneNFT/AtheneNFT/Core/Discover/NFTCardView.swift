@@ -74,9 +74,10 @@ struct NFTCardView: View {
     private var headerSection: some View {
         HStack(spacing: 8) {
             // Creator profile image
-            AsyncImageView(
-                imageName: "profile-image",
-                placeholder: Image(systemName: "person.circle.fill")
+            FallbackAsyncImage(
+                imageName: "Profile",
+                size: CGSize(width: 36, height: 36),
+                cornerRadius: 18
             )
             .frame(width: 36, height: 36)
             .clipShape(Circle())
@@ -95,7 +96,9 @@ struct NFTCardView: View {
             // Username
             VStack(alignment: .leading, spacing: 2) {
                 Text(creatorUsername)
-                    .nftUsernameStyle()
+                    .font(.custom("Noto Sans", size: 14))
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
                     .lineLimit(1)
                 
                 Text("Creator")
@@ -139,9 +142,10 @@ struct NFTCardView: View {
                             }
                         } else {
                             // Image or loading state
-                            AsyncImageView(
+                            FallbackAsyncImage(
                                 imageName: imageName,
-                                placeholder: loadingPlaceholder
+                                size: CGSize(width: 311, height: 200),
+                                cornerRadius: 12
                             )
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 311, height: 200)
@@ -237,9 +241,10 @@ struct NFTCardView: View {
                 Spacer()
                 
                 // Creator mini avatar
-                AsyncImageView(
-                    imageName: "profile-image",
-                    placeholder: Image(systemName: "person.circle")
+                FallbackAsyncImage(
+                    imageName: "Profile",
+                    size: CGSize(width: 28, height: 28),
+                    cornerRadius: 14
                 )
                 .frame(width: 28, height: 28)
                 .clipShape(Circle())
@@ -265,29 +270,22 @@ struct NFTCardView: View {
             }
         }
         
-        // Check for actual image load error
+        // Check for actual image load error using ImageLoader
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            if UIImage(named: imageName) == nil {
+            if ImageLoader.loadImage(named: imageName) == nil {
                 imageLoadError = true
             }
         }
     }
 }
 
-// MARK: - Simple AsyncImageView
-struct AsyncImageView: View {
+// MARK: - NFT Item Model
+struct NFTItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let creator: String
+    let creatorUsername: String
     let imageName: String
-    let placeholder: Image?
-    
-    var body: some View {
-        if let uiImage = UIImage(named: imageName) {
-            Image(uiImage: uiImage)
-                .resizable()
-        } else {
-            placeholder ?? Image(systemName: "photo")
-                .foregroundColor(.gray)
-        }
-    }
 }
 
 // MARK: - NFT Grid Container with Scroll Features
@@ -413,18 +411,12 @@ struct NFTCardView_Previews: PreviewProvider {
             
             // Scrollable grid
             ScrollableNFTGrid(
-                nftItems: generateSampleNFTItems(count: 12),
+                nftItems: [
+                    NFTItem(title: "Test NFT", creator: "Creator", creatorUsername: "@creator", imageName: "Cards")
+                ],
                 columns: 1
             )
             .previewDisplayName("Scrollable Grid")
-            
-            // Two-column grid
-            ScrollableNFTGrid(
-                nftItems: generateSampleNFTItems(count: 20),
-                columns: 2
-            )
-            .previewDisplayName("Two-Column Grid")
         }
-        .environmentObject(FontManager.shared)
     }
 }

@@ -40,7 +40,7 @@ struct MainTabView: View {
                     // Background with subtle border
                     Rectangle()
                         .foregroundColor(.clear)
-                        .frame(height: dynamicSize(base: 88, geometry: geometry) + geometry.safeAreaInsets.bottom)
+                        .frame(height: DynamicSizing.size(base: 88, geometry: geometry) + geometry.safeAreaInsets.bottom)
                         .background(Color.black)
                         .overlay(
                             Rectangle()
@@ -108,11 +108,11 @@ struct MainTabView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, dynamicPadding(base: 24, geometry: geometry))
-                    .padding(.top, dynamicPadding(base: 12, geometry: geometry))
+                    .padding(.horizontal, DynamicSizing.padding(base: 24, geometry: geometry))
+                    .padding(.top, DynamicSizing.padding(base: 12, geometry: geometry))
                     .padding(.bottom, geometry.safeAreaInsets.bottom)
                 }
-                .frame(height: dynamicSize(base: 88, geometry: geometry) + geometry.safeAreaInsets.bottom)
+                .frame(height: DynamicSizing.size(base: 88, geometry: geometry) + geometry.safeAreaInsets.bottom)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .sheet(isPresented: $showWalletTransfer) {
@@ -122,19 +122,6 @@ struct MainTabView: View {
         .onAppear {
             haptic.prepare()
         }
-    }
-    
-    // Dynamic sizing helpers
-    private func dynamicSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicPadding(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
     }
 }
 
@@ -148,13 +135,13 @@ struct TabButton: View {
     @State private var bounceScale: CGFloat = 1.0
     
     var body: some View {
-        VStack(spacing: dynamicSpacing(base: 5)) {
+        VStack(spacing: DynamicSizing.spacing(base: 5, geometry: geometry)) {
             Image(systemName: icon)
-                .font(.system(size: dynamicSize(base: 24)))
+                .font(.system(size: DynamicSizing.size(base: 24, geometry: geometry)))
                 .foregroundColor(isSelected ? .white : .white.opacity(0.7))
                 .scaleEffect(bounceScale)
             Text(title)
-                .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 11)).weight(.semibold))
+                .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 11, geometry: geometry)).weight(.semibold))
                 .foregroundColor(isSelected ? .white : .white.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
@@ -173,24 +160,6 @@ struct TabButton: View {
             action()
         }
     }
-    
-    private func dynamicSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicFontSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicSpacing(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
 }
 
 // Share button with special styling
@@ -200,20 +169,20 @@ struct ShareButton: View {
     @State private var bounceScale: CGFloat = 1.0
     
     var body: some View {
-        VStack(spacing: dynamicSpacing(base: 5)) {
+        VStack(spacing: DynamicSizing.spacing(base: 5, geometry: geometry)) {
             ZStack {
                 Circle()
                     .fill(Color(red: 0.50, green: 0.23, blue: 0.27).opacity(0.5))
-                    .frame(width: dynamicSize(base: 54), height: dynamicSize(base: 54))
+                    .frame(width: DynamicSizing.size(base: 54, geometry: geometry), height: DynamicSizing.size(base: 54, geometry: geometry))
                 
                 Image(systemName: "plus")
-                    .font(.system(size: dynamicSize(base: 26), weight: .bold))
+                    .font(.system(size: DynamicSizing.size(base: 26, geometry: geometry), weight: .bold))
                     .foregroundColor(.white)
             }
             .scaleEffect(bounceScale)
             
             Text("Share")
-                .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 11)).weight(.semibold))
+                .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 11, geometry: geometry)).weight(.semibold))
                 .foregroundColor(.white)
         }
         .frame(maxWidth: .infinity)
@@ -231,23 +200,5 @@ struct ShareButton: View {
             
             action()
         }
-    }
-    
-    private func dynamicSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicFontSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicSpacing(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
     }
 }

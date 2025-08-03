@@ -125,14 +125,6 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
-		BE856C2D2A1234F30012345A /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-				BE856C2B2A1234F20012345A /* UIKitImageView.swift */,
-			);
-			path = Utils;
-			sourceTree = "<group>";
-		};
 		BE856C252A1234E70012345A /* Home */ = {
 			isa = PBXGroup;
 			children = (
@@ -175,6 +167,14 @@
 				BE856C1B2A1234A80012345A /* ProfileView.swift */,
 			);
 			path = Profile;
+			sourceTree = "<group>";
+		};
+		BE856C2D2A1234F30012345A /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				BE856C2B2A1234F20012345A /* UIKitImageView.swift */,
+			);
+			path = Utils;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -394,7 +394,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"AtheneNFT/Preview Content\"";
-				DEVELOPMENT_TEAM = 3MJ9PBQK7G;
+				DEVELOPMENT_TEAM = 2CN89MJBJG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AtheneNFT/Info.plist;
@@ -411,7 +411,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AtheneNFT;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arowais1928.AtheneNFT;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -427,7 +427,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"AtheneNFT/Preview Content\"";
-				DEVELOPMENT_TEAM = 3MJ9PBQK7G;
+				DEVELOPMENT_TEAM = 2CN89MJBJG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AtheneNFT/Info.plist;
@@ -443,7 +443,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AtheneNFT;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arowais1928.AtheneNFT;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

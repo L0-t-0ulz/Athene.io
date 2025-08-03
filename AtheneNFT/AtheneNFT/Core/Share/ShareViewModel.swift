@@ -18,9 +18,9 @@ class ShareViewModel: ObservableObject {
     
     func createNFT() {
         guard let image = image, 
-              let imageData = image.jpegData(compressionQuality: 0.8),
+              let _ = image.jpegData(compressionQuality: 0.8),
               !title.isEmpty,
-              let priceValue = Double(price) else {
+              let _ = Double(price) else {
             errorMessage = "Please fill all fields and add an image"
             return
         }

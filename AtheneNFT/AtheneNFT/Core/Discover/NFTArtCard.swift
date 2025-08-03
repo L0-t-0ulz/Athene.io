@@ -36,30 +36,33 @@ struct NFTArtCard: View {
     }
     
     var body: some View {
-        Button(action: { onTap?() }) {
-            cardContent
+        GeometryReader { geometry in
+            Button(action: { onTap?() }) {
+                cardContent(geometry: geometry)
+            }
+            .buttonStyle(NFTCardButtonStyle())
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: isPressed)
+            .onLongPressGesture(minimumDuration: 0) { _ in
+                // Handle press state for visual feedback
+            } onPressingChanged: { pressing in
+                isPressed = pressing
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("NFT: \(title) by \(creator)")
+            .accessibilityHint("Double tap to view details")
         }
-        .buttonStyle(NFTCardButtonStyle())
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onLongPressGesture(minimumDuration: 0) { _ in
-            // Handle press state for visual feedback
-        } onPressingChanged: { pressing in
-            isPressed = pressing
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("NFT: \(title) by \(creator)")
-        .accessibilityHint("Double tap to view details")
+        .frame(width: 343, height: 343)
     }
     
-    private var cardContent: some View {
+    private func cardContent(geometry: GeometryProxy) -> some View {
         ZStack {
             // Main card container
             cardBackground
             
             VStack(spacing: 0) {
                 // Header with user info
-                cardHeader
+                cardHeader(geometry: geometry)
                 
                 // Main NFT image
                 nftImageSection
@@ -67,10 +70,9 @@ struct NFTArtCard: View {
                 Spacer()
                 
                 // Footer with title and creator info
-                cardFooter
+                cardFooter(geometry: geometry)
             }
         }
-        .frame(width: 343, height: 343)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
     
@@ -101,23 +103,29 @@ struct NFTArtCard: View {
             )
     }
     
-    private var cardHeader: some View {
+    private func cardHeader(geometry: GeometryProxy) -> some View {
         HStack {
             // User profile section
             HStack(spacing: 8) {
-                AsyncImageView(
-                    imageName: "profile-image",
-                    placeholder: Image(systemName: "person.circle.fill")
-                )
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                )
+                Circle()
+                    .fill(LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.6, green: 0.4, blue: 0.2),
+                            Color(red: 0.3, green: 0.2, blue: 0.1)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Text(String(username.dropFirst(1).prefix(1)).capitalized)
+                            .font(FontUtility.responsiveFont(baseSize: 12, geometry: geometry, weight: .bold))
+                            .foregroundColor(.white)
+                    )
                 
                 Text(username)
-                    .nftUsernameStyle()
+                    .font(FontUtility.responsiveFont(baseSize: 14, geometry: geometry, weight: .medium))
+                    .foregroundColor(.white)
                     .lineLimit(1)
             }
             
@@ -145,13 +153,12 @@ struct NFTArtCard: View {
     }
     
     private var nftImageSection: some View {
-        AsyncImageView(
+        FallbackAsyncImage(
             imageName: imageName,
-            placeholder: Image(systemName: "photo.artframe")
+            size: CGSize(width: 311, height: 200),
+            contentMode: .fill,
+            cornerRadius: 8
         )
-        .aspectRatio(contentMode: .fill)
-        .frame(width: 311, height: 200)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
@@ -161,12 +168,13 @@ struct NFTArtCard: View {
         }
     }
     
-    private var cardFooter: some View {
+    private func cardFooter(geometry: GeometryProxy) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // NFT Title
             HStack {
                 Text(title)
-                    .nftTitleStyle()
+                    .font(FontUtility.responsiveFont(baseSize: 18, geometry: geometry, weight: .bold))
+                    .foregroundColor(.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 
@@ -176,24 +184,24 @@ struct NFTArtCard: View {
             // Creator info
             HStack(spacing: 8) {
                 Text("Created by")
-                    .nftSubtitleStyle()
+                    .font(FontUtility.responsiveFont(baseSize: 12, geometry: geometry))
+                    .foregroundColor(.gray)
                 
                 Text(creator)
-                    .nftCreatorStyle()
+                    .font(FontUtility.responsiveFont(baseSize: 12, geometry: geometry, weight: .medium))
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
                 // Small creator avatar
-                AsyncImageView(
-                    imageName: "profile-image",
-                    placeholder: Image(systemName: "person.circle")
-                )
-                .frame(width: 24, height: 24)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
-                )
+                Circle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Text(String(creator.dropFirst(1).prefix(1)).capitalized)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    )
             }
         }
         .padding(.horizontal, 16)
@@ -257,10 +265,13 @@ struct NFTDetailView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Large image
-                    AsyncImageView(imageName: nftItem.imageName)
-                        .aspectRatio(1, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .padding(.horizontal)
+                    FallbackAsyncImage(
+                        imageName: nftItem.imageName,
+                        contentMode: .fit,
+                        cornerRadius: 16
+                    )
+                    .aspectRatio(1, contentMode: .fit)
+                    .padding(.horizontal)
                     
                     // Details
                     VStack(alignment: .leading, spacing: 16) {
@@ -271,10 +282,13 @@ struct NFTDetailView: View {
                         
                         HStack {
                             Text("Created by")
-                                .nftSubtitleStyle()
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
                             
                             Text(nftItem.creator)
-                                .nftCreatorStyle()
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
                             
                             Spacer()
                         }

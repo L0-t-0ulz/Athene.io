@@ -4,7 +4,6 @@ import UIKit
 struct HomeView: View {
     @State private var isRefreshing = false
     @State private var hapticFeedback = UIImpactFeedbackGenerator(style: .light)
-    // New triggers for scrolling
     @State private var scrollToTopTrigger = false
     @State private var scrollToBottomTrigger = false
     
@@ -31,12 +30,12 @@ struct HomeView: View {
                         
                         HStack {
                             Text("Home Feed")
-                                .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 28, geometry: geometry)).weight(.bold))
+                                .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 28, geometry: geometry)).weight(.bold))
                                 .foregroundColor(.white)
                             
                             Spacer()
                         }
-                        .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+                        .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
                         .padding(.vertical, 12)
                     }
                     .background(Color.black)
@@ -72,7 +71,6 @@ struct HomeView: View {
                             await refreshContent()
                         }
                         .ignoresSafeArea(edges: .horizontal)
-                        // FIXED: Updated onChange syntax for iOS 17+
                         .onChange(of: scrollToTopTrigger) { oldValue, newValue in
                             if oldValue != newValue {
                                 withAnimation {
@@ -93,7 +91,6 @@ struct HomeView: View {
         }
     }
     
-    // Add the missing refreshContent function
     private func refreshContent() async {
         isRefreshing = true
         hapticFeedback.impactOccurred()
@@ -119,7 +116,7 @@ struct HomeView: View {
                 id: "1",
                 title: "Slango",
                 description: "Heres my latest piece that I created, I hope you guys like it!\n#newrelease",
-                imageURL: "Trending/Image@19",
+                imageURL: "Trending",
                 price: 2.5,
                 creator: creators[0],
                 createdAt: Date().addingTimeInterval(-3600),
@@ -134,7 +131,7 @@ struct HomeView: View {
                 id: "2",
                 title: "Cave Man",
                 description: "Cave man themed nft, check it out on opensea! #caveman",
-                imageURL: "Cards/Image@9",
+                imageURL: "Cards",
                 price: 1.8,
                 creator: creators[1],
                 createdAt: Date().addingTimeInterval(-7200),
@@ -149,7 +146,7 @@ struct HomeView: View {
                 id: "3",
                 title: "Dogepunk Elite",
                 description: "Special edition Dogepunk with rare attributes #dogepunk #rare",
-                imageURL: "Doge/Image@16",
+                imageURL: "Doge",
                 price: 3.2,
                 creator: creators[2],
                 createdAt: Date().addingTimeInterval(-10800),
@@ -164,7 +161,7 @@ struct HomeView: View {
                 id: "4",
                 title: "Animated Dreams",
                 description: "Mesmerizing animated artwork #gif #animated #art",
-                imageURL: "Gifs/Image@6",
+                imageURL: "Gifs",
                 price: 1.5,
                 creator: creators[3],
                 createdAt: Date().addingTimeInterval(-14400),
@@ -179,7 +176,7 @@ struct HomeView: View {
                 id: "5",
                 title: "Celebrity Collection",
                 description: "Exclusive celebrity themed NFT #celebrity #exclusive",
-                imageURL: "Celebrities/Image@4",
+                imageURL: "Celebrities",
                 price: 5.0,
                 creator: creators[4],
                 createdAt: Date().addingTimeInterval(-18000),
@@ -194,7 +191,7 @@ struct HomeView: View {
                 id: "6",
                 title: "Future Vision",
                 description: "A glimpse into the future of digital art #new #future",
-                imageURL: "New/Image@24",
+                imageURL: "New",
                 price: 2.8,
                 creator: creators[0],
                 createdAt: Date().addingTimeInterval(-21600),
@@ -211,19 +208,6 @@ struct HomeView: View {
     }
 }
 
-// Global helper functions
-func dynamicFontSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-    let screenWidth = geometry.size.width
-    let scaleFactor = min(screenWidth / 390, 1.3)
-    return base * scaleFactor
-}
-
-func dynamicPadding(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-    let screenWidth = geometry.size.width
-    let scaleFactor = min(screenWidth / 390, 1.3)
-    return base * scaleFactor
-}
-
 struct NFTPostView: View {
     let nft: NFT
     let geometry: GeometryProxy
@@ -235,12 +219,12 @@ struct NFTPostView: View {
     var body: some View {
         VStack(spacing: 0) {
             // User header
-            HStack(spacing: dynamicSpacing(base: 10)) {
+            HStack(spacing: DynamicSizing.spacing(base: 10, geometry: geometry)) {
                 // Profile image
                 ZStack {
                     Circle()
                         .fill(Color.gray.opacity(0.2))
-                        .frame(width: dynamicSize(base: 40), height: dynamicSize(base: 40))
+                        .frame(width: DynamicSizing.size(base: 40, geometry: geometry), height: DynamicSizing.size(base: 40, geometry: geometry))
             
                     // Profile image overlay with gradient background
                     Circle()
@@ -252,17 +236,17 @@ struct NFTPostView: View {
                             startPoint: .top,
                             endPoint: .bottom
                         ))
-                        .frame(width: dynamicSize(base: 38), height: dynamicSize(base: 38))
+                        .frame(width: DynamicSizing.size(base: 38, geometry: geometry), height: DynamicSizing.size(base: 38, geometry: geometry))
                         .overlay(
                             Text(String(nft.creator.username.dropFirst(1).prefix(1)).capitalized)
-                                .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 15)).weight(.bold))
+                                .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 15, geometry: geometry)).weight(.bold))
                                 .foregroundColor(.white)
                         )
                 }
                 
                 // Username
                 Text(nft.creator.username)
-                    .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 16)).weight(.semibold))
+                    .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 16, geometry: geometry)).weight(.semibold))
                     .foregroundColor(.white)
                 
                 Spacer()
@@ -274,50 +258,30 @@ struct NFTPostView: View {
                         .foregroundColor(.white)
                 }
             }
-            .padding(.horizontal, dynamicPadding(base: 16))
-            .padding(.vertical, dynamicPadding(base: 10))
+            .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
+            .padding(.vertical, DynamicSizing.padding(base: 10, geometry: geometry))
             
-            // Image - FIXED: Added fallback for missing assets
+            // Image with improved loading
             ZStack {
                 // Background
                 Rectangle()
                     .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
                     .aspectRatio(1, contentMode: .fit)
                 
-                // Try to load local image first, fallback to placeholder
-                if let image = UIImage(named: nft.imageURL) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                } else {
-                    // Fallback placeholder with gradient
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 0.2, green: 0.15, blue: 0.3),
-                            Color(red: 0.1, green: 0.1, blue: 0.2)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .overlay(
-                        VStack(spacing: 8) {
-                            Image(systemName: "photo.artframe")
-                                .font(.system(size: 40))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(nft.title)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    )
-                }
+                // Use FallbackAsyncImage for better image loading
+                FallbackAsyncImage(
+                    imageName: nft.imageURL,
+                    contentMode: .fill,
+                    cornerRadius: 0
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
             }
             .aspectRatio(1, contentMode: .fit)
             .frame(maxWidth: .infinity)
             
             // Interaction buttons
-            HStack(spacing: dynamicSpacing(base: 16)) {
+            HStack(spacing: DynamicSizing.spacing(base: 16, geometry: geometry)) {
                 // Like button with animation
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -333,7 +297,7 @@ struct NFTPostView: View {
                     }
                 }) {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: dynamicSize(base: 24)))
+                        .font(.system(size: DynamicSizing.size(base: 24, geometry: geometry)))
                         .foregroundColor(isLiked ? .red : .white)
                         .scaleEffect(likeScale)
                 }
@@ -343,7 +307,7 @@ struct NFTPostView: View {
                     haptic.impactOccurred()
                 }) {
                     Image(systemName: "message")
-                        .font(.system(size: dynamicSize(base: 22)))
+                        .font(.system(size: DynamicSizing.size(base: 22, geometry: geometry)))
                         .foregroundColor(.white)
                 }
                 
@@ -352,15 +316,15 @@ struct NFTPostView: View {
                     haptic.impactOccurred()
                 }) {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: dynamicSize(base: 22)))
+                        .font(.system(size: DynamicSizing.size(base: 22, geometry: geometry)))
                         .foregroundColor(.white)
                 }
                 
                 Spacer()
             }
-            .padding(.horizontal, dynamicPadding(base: 16))
-            .padding(.top, dynamicPadding(base: 14))
-            .padding(.bottom, dynamicPadding(base: 8))
+            .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
+            .padding(.top, DynamicSizing.padding(base: 14, geometry: geometry))
+            .padding(.bottom, DynamicSizing.padding(base: 8, geometry: geometry))
             
             // Title
             if !nft.title.isEmpty {
@@ -368,7 +332,7 @@ struct NFTPostView: View {
                     .font(Font.custom("Noto Sans", size: 17).weight(.bold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, dynamicPadding(base: 16))
+                    .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
                     .padding(.top, 2)
             }
             
@@ -376,7 +340,7 @@ struct NFTPostView: View {
             let captionText = buildCaptionText(for: nft)
             captionText
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, dynamicPadding(base: 16))
+                .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
                 .padding(.top, 2)
             
             // "Created by" section
@@ -408,9 +372,9 @@ struct NFTPostView: View {
                 
                 Spacer()
             }
-            .padding(.horizontal, dynamicPadding(base: 16))
-            .padding(.top, dynamicPadding(base: 10))
-            .padding(.bottom, dynamicPadding(base: 16))
+            .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
+            .padding(.top, DynamicSizing.padding(base: 10, geometry: geometry))
+            .padding(.bottom, DynamicSizing.padding(base: 16, geometry: geometry))
         }
         .background(Color.black)
         .overlay(
@@ -419,31 +383,6 @@ struct NFTPostView: View {
                 .foregroundColor(Color.gray.opacity(0.15)),
             alignment: .bottom
         )
-    }
-    
-    // Dynamic sizing helpers
-    private func dynamicSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicFontSize(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicPadding(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicSpacing(base: CGFloat) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
     }
     
     private func buildCaptionText(for nft: NFT) -> Text {

@@ -44,12 +44,6 @@ enum NFTCategory: String, CaseIterable {
     }
 }
 
-// Helper struct to make strings identifiable
-struct StringItem: Identifiable {
-    let id = UUID()
-    let value: String
-}
-
 // MARK: - Main View
 struct DiscoverView: View {
     @State private var searchText = ""
@@ -59,25 +53,121 @@ struct DiscoverView: View {
     @StateObject private var nftService = NFTService.shared
     
     private let haptic = UIImpactFeedbackGenerator(style: .light)
-    
-    // Sample data organized by category
     private let sampleData = SampleNFTData()
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background color
-                Color.black.ignoresSafeArea()
+                // Background
+                Color.black.ignoresSafeArea(.all)
                 
                 VStack(spacing: 0) {
-                    // Header with safe area
+                    // Fixed Header
                     headerView(geometry: geometry)
                     
-                    // Search bar
+                    // Fixed Search Bar
                     searchBarView(geometry: geometry)
                     
-                    // Content
-                    contentScrollView(geometry: geometry)
+                    // SCROLLABLE CONTENT - Following SwiftUI best practices
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 24) {
+                            // Featured Categories Section
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Featured Categories")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(NFTCategory.allCases, id: \.self) { category in
+                                            CategoryChip(
+                                                category: category,
+                                                isSelected: selectedCategory == category
+                                            ) {
+                                                selectedCategory = selectedCategory == category ? nil : category
+                                                haptic.impactOccurred()
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+                            
+                            // NFT Grid Content - Multiple sections to ensure scrollable height
+                            ForEach(NFTCategory.allCases, id: \.self) { category in
+                                VStack(alignment: .leading, spacing: 16) {
+                                    // Section Header
+                                    HStack {
+                                        Text(category.displayName)
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button("View All") {
+                                            // Action
+                                        }
+                                        .foregroundColor(.blue)
+                                        .font(.caption)
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    // NFT Grid for this category
+                                    LazyVGrid(columns: [
+                                        GridItem(.flexible(), spacing: 16),
+                                        GridItem(.flexible(), spacing: 16)
+                                    ], spacing: 16) {
+                                        ForEach(sampleData.nfts(for: category).prefix(6), id: \.id) { item in
+                                            NFTGridCard(item: item)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+                            
+                            // Additional scrollable content to guarantee scroll
+                            VStack(spacing: 20) {
+                                Text("More NFT Collections")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                
+                                ForEach(0..<10, id: \.self) { index in
+                                    HStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(width: 60, height: 60)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text("Collection \(index + 1)")
+                                                .foregroundColor(.white)
+                                                .font(.headline)
+                                            Text("Trending NFT Collection")
+                                                .foregroundColor(.gray)
+                                                .font(.caption)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding()
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(12)
+                                }
+                            }
+                            .padding()
+                            
+                            // Bottom padding for tab bar - CRITICAL for scrolling
+                            Spacer(minLength: 120)
+                        }
+                        .padding(.top, 8)
+                    }
+                    // Remove any frame constraints that could prevent scrolling
                 }
             }
             .navigationBarHidden(true)
@@ -98,7 +188,7 @@ struct DiscoverView: View {
             
             HStack {
                 Text("Discover")
-                    .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 32, geometry: geometry)).weight(.bold))
+                    .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 32, geometry: geometry)).weight(.bold))
                     .foregroundColor(.white)
                 
                 Button(action: {
@@ -108,7 +198,7 @@ struct DiscoverView: View {
                     haptic.impactOccurred()
                 }) {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: dynamicSize(base: 18, geometry: geometry), weight: .bold))
+                        .font(.system(size: DynamicSizing.size(base: 18, geometry: geometry), weight: .bold))
                         .foregroundColor(.white)
                         .padding(.leading, 4)
                 }
@@ -120,11 +210,11 @@ struct DiscoverView: View {
                     haptic.impactOccurred()
                 }) {
                     Image(systemName: "line.horizontal.3.decrease.circle")
-                        .font(.system(size: dynamicSize(base: 24, geometry: geometry)))
+                        .font(.system(size: DynamicSizing.size(base: 24, geometry: geometry)))
                         .foregroundColor(.white)
                 }
             }
-            .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+            .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
             .padding(.vertical, 12)
         }
         .background(Color.black)
@@ -138,39 +228,23 @@ struct DiscoverView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.white.opacity(0.6))
-                    .font(.system(size: dynamicSize(base: 20, geometry: geometry)))
-                    .padding(.leading, dynamicPadding(base: 14, geometry: geometry))
+                    .font(.system(size: DynamicSizing.size(base: 20, geometry: geometry)))
+                    .padding(.leading, DynamicSizing.padding(base: 14, geometry: geometry))
                 
                 Text("Search NFTs, collections, artists...")
-                    .font(Font.custom("Noto Sans", size: dynamicFontSize(base: 17, geometry: geometry)))
+                    .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 17, geometry: geometry)))
                     .foregroundColor(Color.white.opacity(0.60))
                 
                 Spacer()
             }
-            .frame(height: dynamicSize(base: 48, geometry: geometry))
+            .frame(height: DynamicSizing.size(base: 48, geometry: geometry))
             .background(Color(white: 0.15))
             .cornerRadius(12)
         }
-        .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
-        .padding(.bottom, dynamicPadding(base: 24, geometry: geometry))
+        .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
+        .padding(.bottom, DynamicSizing.padding(base: 24, geometry: geometry))
         .scaleEffect(isSearching ? 0.98 : 1.0)
         .animation(.spring(response: 0.3), value: isSearching)
-    }
-    
-    private func contentScrollView(geometry: GeometryProxy) -> some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 32) {
-                // Featured Categories
-                featuredCategoriesView(geometry: geometry)
-                
-                // Category Sections
-                ForEach(NFTCategory.allCases, id: \.self) { category in
-                    categorySection(category: category, geometry: geometry)
-                }
-            }
-            .padding(.top, 10)
-            .padding(.bottom, 100) // Extra space for tab bar
-        }
     }
     
     private func featuredCategoriesView(geometry: GeometryProxy) -> some View {
@@ -178,7 +252,7 @@ struct DiscoverView: View {
             Text("Featured Categories")
                 .font(Font.custom("Noto Sans", size: 24).weight(.bold))
                 .foregroundColor(.white)
-                .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -189,7 +263,7 @@ struct DiscoverView: View {
                         }
                     }
                 }
-                .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
             }
         }
     }
@@ -210,7 +284,7 @@ struct DiscoverView: View {
                 .font(Font.custom("Noto Sans", size: 14).weight(.medium))
                 .foregroundColor(.blue)
             }
-            .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+            .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
             
             // User avatars row
             ScrollView(.horizontal, showsIndicators: false) {
@@ -219,7 +293,7 @@ struct DiscoverView: View {
                         UserCircleView(username: item.username, geometry: geometry)
                     }
                 }
-                .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
             }
             
             // NFT Cards in grid
@@ -237,32 +311,12 @@ struct DiscoverView: View {
                         geometry: geometry,
                         onTap: {
                             haptic.impactOccurred()
-                            // Handle NFT card tap
                         }
                     )
                 }
             }
-            .padding(.horizontal, dynamicPadding(base: 20, geometry: geometry))
+            .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
         }
-    }
-    
-    // MARK: - Dynamic Sizing Helpers
-    private func dynamicSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicFontSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
-    }
-    
-    private func dynamicPadding(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
     }
 }
 
@@ -270,22 +324,54 @@ struct DiscoverView: View {
 struct CategoryChip: View {
     let category: NFTCategory
     let isSelected: Bool
-    let onTap: () -> Void
+    let action: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
+        Button(action: action) {
             Text(category.displayName)
-                .font(Font.custom("Noto Sans", size: 14).weight(.medium))
-                .foregroundColor(isSelected ? .black : .white)
+                .font(.caption)
+                .fontWeight(.medium)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.white : Color.white.opacity(0.1))
+                    isSelected ? Color.blue : Color.gray.opacity(0.2)
                 )
+                .foregroundColor(isSelected ? .white : .gray)
+                .cornerRadius(16)
         }
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.spring(response: 0.3), value: isSelected)
+    }
+}
+
+// MARK: - NFT Grid Card Component
+struct NFTGridCard: View {
+    let item: NFTItemData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // NFT Image
+            FallbackAsyncImage(
+                imageName: item.imageName,
+                size: CGSize(width: 160, height: 160),
+                contentMode: .fill,
+                cornerRadius: 12
+            )
+            
+            // NFT Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Text(item.creator.username)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+                    .lineLimit(1)
+            }
+        }
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
     }
 }
 
@@ -373,25 +459,12 @@ struct NFTImageCard: View {
                         .fill(Color(white: 0.15))
                         .aspectRatio(1, contentMode: .fit)
                     
-                    // Image loading with proper fallback
-                    AsyncImage(url: URL(string: "https://picsum.photos/300/300?random=\(item.id.hashValue)")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        VStack {
-                            Image(systemName: "photo.artframe")
-                                .font(.system(size: 24))
-                                .foregroundColor(.white.opacity(0.6))
-                            
-                            Text(item.title)
-                                .font(Font.custom("Noto Sans", size: 12))
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 8)
-                                .padding(.top, 4)
-                        }
-                    }
+                    // Use the new FallbackAsyncImage for better image handling
+                    FallbackAsyncImage(
+                        imageName: item.imageName,
+                        contentMode: .fill,
+                        cornerRadius: 0
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     
@@ -559,16 +632,12 @@ struct SearchView: View {
                 } else {
                     List(searchResults) { item in
                         HStack {
-                            AsyncImage(url: URL(string: "https://picsum.photos/60/60?random=\(item.id.hashValue)")) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                            }
-                            .frame(width: 60, height: 60)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            FallbackAsyncImage(
+                                imageName: item.imageName,
+                                size: CGSize(width: 60, height: 60),
+                                contentMode: .fill,
+                                cornerRadius: 8
+                            )
                             
                             VStack(alignment: .leading) {
                                 Text(item.title)
@@ -604,9 +673,7 @@ struct SearchView: View {
         
         isSearching = true
         
-        // Simulate search delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // Mock search results
             let sampleData = SampleNFTData()
             searchResults = sampleData.getAllItems().filter { item in
                 item.title.localizedCaseInsensitiveContains(searchText) ||
@@ -625,31 +692,31 @@ class SampleNFTData {
         // Initialize sample data for each category
         let newItems = [
             NFTItemData(
-                title: "Dogepunk x Cybertruck",
-                creator: User(id: "c1", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-1"),
+                title: "New Digital Art",
+                creator: User(id: "c1", username: "@newartist", displayName: "New Artist", profileImage: "Profile"),
                 username: "@theaibender",
-                imageName: "Image@18.png",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Hotdog",
-                creator: User(id: "c2", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-2"),
+                title: "Fresh Collection",
+                creator: User(id: "c2", username: "@freshcreator", displayName: "Fresh Creator", profileImage: "Profile"),
                 username: "@theabstractor",
-                imageName: "Image@17.png",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Aquaking",
-                creator: User(id: "c3", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-3"),
+                title: "Latest Drop",
+                creator: User(id: "c3", username: "@latestdrop", displayName: "Latest Drop", profileImage: "Profile"),
                 username: "@haykronmiyc",
-                imageName: "Image@16.png",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Socialite",
-                creator: User(id: "c4", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-4"),
+                title: "Newest Mint",
+                creator: User(id: "c4", username: "@newestmint", displayName: "Newest Mint", profileImage: "Profile"),
                 username: "@jonboyeq43",
-                imageName: "Image@15.png",
+                imageName: "New",
                 category: .new
             )
         ]
@@ -657,29 +724,22 @@ class SampleNFTData {
         let trendingItems = [
             NFTItemData(
                 title: "The Hazy Maze",
-                creator: User(id: "t1", username: "@jonahlipps", displayName: "Jonah Lipps", profileImage: "profile-3"),
+                creator: User(id: "t1", username: "@jonahlipps", displayName: "Jonah Lipps", profileImage: "Profile"),
                 username: "@jonahlipps",
                 imageName: "Trending",
                 category: .trending
             ),
             NFTItemData(
                 title: "Splash",
-                creator: User(id: "t2", username: "@aalvarez", displayName: "A Alvarez", profileImage: "profile-4"),
+                creator: User(id: "t2", username: "@aalvarez", displayName: "A Alvarez", profileImage: "Profile"),
                 username: "@aalvarez",
                 imageName: "Trending",
                 category: .trending
             ),
             NFTItemData(
                 title: "Abstract Thoughts",
-                creator: User(id: "t3", username: "@abstract_mind", displayName: "Abstract Mind", profileImage: "profile-9"),
+                creator: User(id: "t3", username: "@abstract_mind", displayName: "Abstract Mind", profileImage: "Profile"),
                 username: "@abstract_mind",
-                imageName: "Trending",
-                category: .trending
-            ),
-            NFTItemData(
-                title: "Future City",
-                creator: User(id: "t4", username: "@futurist", displayName: "Futurist", profileImage: "profile-10"),
-                username: "@futurist",
                 imageName: "Trending",
                 category: .trending
             )
@@ -688,30 +748,16 @@ class SampleNFTData {
         let dogeItems = [
             NFTItemData(
                 title: "Doge King",
-                creator: User(id: "d1", username: "@dogemaster", displayName: "Doge Master", profileImage: "profile-doge1"),
+                creator: User(id: "d1", username: "@dogemaster", displayName: "Doge Master", profileImage: "Profile"),
                 username: "@dogemaster",
-                imageName: "Image@15.png",
+                imageName: "Doge",
                 category: .doge
             ),
             NFTItemData(
                 title: "Space Doge",
-                creator: User(id: "d2", username: "@spacedoge", displayName: "Space Doge", profileImage: "profile-doge2"),
+                creator: User(id: "d2", username: "@spacedoge", displayName: "Space Doge", profileImage: "Profile"),
                 username: "@spacedoge",
-                imageName: "Image@16.png",
-                category: .doge
-            ),
-            NFTItemData(
-                title: "Cyber Doge",
-                creator: User(id: "d3", username: "@cyberdoge", displayName: "Cyber Doge", profileImage: "profile-doge3"),
-                username: "@cyberdoge",
-                imageName: "Image@17.png",
-                category: .doge
-            ),
-            NFTItemData(
-                title: "Golden Doge",
-                creator: User(id: "d4", username: "@goldendoge", displayName: "Golden Doge", profileImage: "profile-doge4"),
-                username: "@goldendoge",
-                imageName: "Image@18.png",
+                imageName: "Doge",
                 category: .doge
             )
         ]
@@ -719,29 +765,15 @@ class SampleNFTData {
         let cardItems = [
             NFTItemData(
                 title: "Prometheus",
-                creator: User(id: "c1", username: "@royalcards", displayName: "Royal Cards", profileImage: "profile-cards"),
+                creator: User(id: "c1", username: "@royalcards", displayName: "Royal Cards", profileImage: "Profile"),
                 username: "@jenna453",
                 imageName: "Cards",
                 category: .cards
             ),
             NFTItemData(
                 title: "The Vitalik Card",
-                creator: User(id: "c2", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-cards"),
+                creator: User(id: "c2", username: "@cardmaster", displayName: "Card Master", profileImage: "Profile"),
                 username: "@lisart",
-                imageName: "Cards",
-                category: .cards
-            ),
-            NFTItemData(
-                title: "Neymar's Card",
-                creator: User(id: "c3", username: "@anone43", displayName: "Anone", profileImage: "profile-cards"),
-                username: "@liang2000",
-                imageName: "Cards",
-                category: .cards
-            ),
-            NFTItemData(
-                title: "Adelaide",
-                creator: User(id: "c4", username: "@royalcards", displayName: "Royal Cards", profileImage: "profile-cards"),
-                username: "@henrythecollector",
                 imageName: "Cards",
                 category: .cards
             )
@@ -750,29 +782,15 @@ class SampleNFTData {
         let gifItems = [
             NFTItemData(
                 title: "Confused Picasso",
-                creator: User(id: "g1", username: "@cryptogrin", displayName: "Crypto Grin", profileImage: "profile-gif"),
+                creator: User(id: "g1", username: "@cryptogrin", displayName: "Crypto Grin", profileImage: "Profile"),
                 username: "@cryptoori",
                 imageName: "Gifs",
                 category: .gifs
             ),
             NFTItemData(
                 title: "Kitty Gif",
-                creator: User(id: "g2", username: "@mrrerb", displayName: "Mr. Rerb", profileImage: "profile-gif"),
+                creator: User(id: "g2", username: "@mrrerb", displayName: "Mr. Rerb", profileImage: "Profile"),
                 username: "@theabstractor",
-                imageName: "Gifs",
-                category: .gifs
-            ),
-            NFTItemData(
-                title: "CyberBoy",
-                creator: User(id: "g3", username: "@cryptogrin", displayName: "Crypto Grin", profileImage: "profile-gif"),
-                username: "@joysxcards",
-                imageName: "Gifs",
-                category: .gifs
-            ),
-            NFTItemData(
-                title: "Melt",
-                creator: User(id: "g4", username: "@connect3", displayName: "Connect3", profileImage: "profile-gif"),
-                username: "@annie43",
                 imageName: "Gifs",
                 category: .gifs
             )
@@ -781,29 +799,15 @@ class SampleNFTData {
         let celebrityItems = [
             NFTItemData(
                 title: "Logan Paul Card",
-                creator: User(id: "cel1", username: "@cryptogrin3", displayName: "Crypto Grin 3", profileImage: "profile-celebrity"),
+                creator: User(id: "cel1", username: "@cryptogrin3", displayName: "Crypto Grin 3", profileImage: "Profile"),
                 username: "@cryptogrin33",
                 imageName: "Celebrities",
                 category: .celebrities
             ),
             NFTItemData(
-                title: "Ugly Weekend Meme",
-                creator: User(id: "cel2", username: "@instamiyu", displayName: "Instamiyu", profileImage: "profile-celebrity"),
-                username: "@james45",
-                imageName: "Celebrities",
-                category: .celebrities
-            ),
-            NFTItemData(
                 title: "Dicaprio Meme",
-                creator: User(id: "cel3", username: "@instamiyu", displayName: "Instamiyu", profileImage: "profile-celebrity"),
+                creator: User(id: "cel3", username: "@instamiyu", displayName: "Instamiyu", profileImage: "Profile"),
                 username: "@instamiyu",
-                imageName: "Celebrities",
-                category: .celebrities
-            ),
-            NFTItemData(
-                title: "Lebron Card",
-                creator: User(id: "cel4", username: "@cryptomill", displayName: "Crypto Mill", profileImage: "profile-celebrity"),
-                username: "@kerrypoet",
                 imageName: "Celebrities",
                 category: .celebrities
             )
@@ -826,6 +830,10 @@ class SampleNFTData {
     func getAllItems() -> [NFTItemData] {
         return categories.values.flatMap { $0 }
     }
+    
+    func nfts(for category: NFTCategory) -> [NFTItemData] {
+        return categories[category] ?? []
+    }
 }
 
 // MARK: - View Extensions
@@ -846,13 +854,5 @@ struct RoundedCorner: Shape {
             cornerRadii: CGSize(width: radius, height: radius)
         )
         return Path(path.cgPath)
-    }
-}
-
-// MARK: - Preview
-struct DiscoverView_Previews: PreviewProvider {
-    static var previews: some View {
-        DiscoverView()
-            .preferredColorScheme(.dark)
     }
 }

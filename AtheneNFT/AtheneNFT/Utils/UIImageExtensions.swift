@@ -1,235 +1,289 @@
-import SwiftUI
 import UIKit
+import SwiftUI
 
+// MARK: - UIImage Extensions
 extension UIImage {
     
-    /// A robust image loading function with multiple fallbacks and improved error handling
-    static func loadWithFallback(from path: String) -> UIImage? {
-        guard !path.isEmpty else {
-            print("❌ Empty path provided")
+    /// Create a image with given color and size
+    static func create(withColor color: UIColor, size: CGSize = CGSize(width: 1, height: 1)) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            color.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+    
+    /// Resize image to specific size
+    func resized(to size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            self.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+    
+    /// Create circular image
+    func circularImage() -> UIImage {
+        let size = CGSize(width: min(self.size.width, self.size.height), height: min(self.size.width, self.size.height))
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            context.cgContext.addEllipse(in: rect)
+            context.cgContext.clip()
+            self.draw(in: rect)
+        }
+    }
+    
+    /// Add corner radius to image
+    func withRoundedCorners(radius: CGFloat) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            let path = UIBezierPath(roundedRect: rect, cornerRadius: radius)
+            context.cgContext.addPath(path.cgPath)
+            context.cgContext.clip()
+            self.draw(in: rect)
+        }
+    }
+    
+    /// Compress image to specified quality
+    func compressed(quality: CGFloat = 0.8) -> Data? {
+        return self.jpegData(compressionQuality: quality)
+    }
+    
+    /// Create thumbnail with specified size
+    func thumbnail(size: CGSize) -> UIImage {
+        let aspectRatio = self.size.width / self.size.height
+        var thumbnailSize = size
+        
+        if aspectRatio > 1 {
+            // Landscape
+            thumbnailSize.height = size.width / aspectRatio
+        } else {
+            // Portrait
+            thumbnailSize.width = size.height * aspectRatio
+        }
+        
+        return resized(to: thumbnailSize)
+    }
+}
+
+// MARK: - Image Processing
+extension UIImage {
+    
+    /// Apply blur effect
+    func blurred(radius: CGFloat = 10) -> UIImage? {
+        guard let ciImage = CIImage(image: self) else { return nil }
+        
+        let filter = CIFilter(name: "CIGaussianBlur")
+        filter?.setValue(ciImage, forKey: kCIInputImageKey)
+        filter?.setValue(radius, forKey: kCIInputRadiusKey)
+        
+        guard let outputImage = filter?.outputImage else { return nil }
+        
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+        
+        return UIImage(cgImage: cgImage)
+    }
+    
+    /// Adjust brightness
+    func brightness(value: Float) -> UIImage? {
+        guard let ciImage = CIImage(image: self) else { return nil }
+        
+        let filter = CIFilter(name: "CIColorControls")
+        filter?.setValue(ciImage, forKey: kCIInputImageKey)
+        filter?.setValue(value, forKey: kCIInputBrightnessKey)
+        
+        guard let outputImage = filter?.outputImage else { return nil }
+        
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+        
+        return UIImage(cgImage: cgImage)
+    }
+    
+    /// Convert to grayscale
+    func grayscale() -> UIImage? {
+        guard let ciImage = CIImage(image: self) else { return nil }
+        
+        let filter = CIFilter(name: "CIColorMonochrome")
+        filter?.setValue(ciImage, forKey: kCIInputImageKey)
+        filter?.setValue(CIColor.gray, forKey: kCIInputColorKey)
+        filter?.setValue(1.0, forKey: kCIInputIntensityKey)
+        
+        guard let outputImage = filter?.outputImage else { return nil }
+        
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+        
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+// MARK: - NFT Specific Image Utilities
+extension UIImage {
+    
+    /// Create NFT placeholder image
+    static func nftPlaceholder(size: CGSize = CGSize(width: 200, height: 200)) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            // Background gradient
+            let colors = [
+                UIColor(red: 0.2, green: 0.15, blue: 0.3, alpha: 1.0).cgColor,
+                UIColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0).cgColor
+            ]
+            
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                    colors: colors as CFArray,
+                                    locations: [0.0, 1.0])!
+            
+            context.cgContext.drawLinearGradient(gradient,
+                                               start: CGPoint(x: 0, y: 0),
+                                               end: CGPoint(x: size.width, y: size.height),
+                                               options: [])
+            
+            // Add icon
+            let iconSize = min(size.width, size.height) * 0.3
+            let iconRect = CGRect(
+                x: (size.width - iconSize) / 2,
+                y: (size.height - iconSize) / 2,
+                width: iconSize,
+                height: iconSize
+            )
+            
+            UIColor.white.withAlphaComponent(0.6).setFill()
+            context.cgContext.fillEllipse(in: iconRect)
+        }
+    }
+    
+    /// Create profile placeholder
+    static func profilePlaceholder(size: CGSize = CGSize(width: 40, height: 40), initials: String = "U") -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            // Background circle
+            let colors = [
+                UIColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0).cgColor,
+                UIColor(red: 0.3, green: 0.2, blue: 0.1, alpha: 1.0).cgColor
+            ]
+            
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                    colors: colors as CFArray,
+                                    locations: [0.0, 1.0])!
+            
+            let rect = CGRect(origin: .zero, size: size)
+            context.cgContext.addEllipse(in: rect)
+            context.cgContext.clip()
+            
+            context.cgContext.drawRadialGradient(gradient,
+                                               startCenter: CGPoint(x: size.width * 0.3, y: size.height * 0.3),
+                                               startRadius: 0,
+                                               endCenter: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
+                                               endRadius: size.width * 0.7,
+                                               options: [])
+            
+            // Add initials
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: size.width * 0.4, weight: .bold),
+                .foregroundColor: UIColor.white
+            ]
+            
+            let text = NSAttributedString(string: initials.uppercased(), attributes: attributes)
+            let textSize = text.size()
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            text.draw(in: textRect)
+        }
+    }
+}
+
+// MARK: - SwiftUI Integration
+extension Image {
+    
+    /// Initialize from UIImage with fallback
+    init?(uiImage: UIImage?) {
+        guard let uiImage = uiImage else { return nil }
+        self.init(uiImage: uiImage)
+    }
+    
+    /// Apply NFT card styling
+    func nftCardStyle() -> some View {
+        self
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .clipped()
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+    
+    /// Apply profile image styling
+    func profileImageStyle(size: CGFloat = 40) -> some View {
+        self
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Image Loading Utilities
+struct ImageLoadingUtility {
+    
+    /// Load image from URL with caching
+    static func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            guard let data = data, error == nil else {
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+            
+            let image = UIImage(data: data)
+            DispatchQueue.main.async {
+                completion(image)
+            }
+        }.resume()
+    }
+    
+    /// Save image to documents directory
+    static func saveImage(_ image: UIImage, withName name: String) -> Bool {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return false
+        }
+        
+        let fileName = name + ".jpg"
+        let fileURL = documentsDirectory.appendingPathComponent(fileName)
+        
+        guard let data = image.jpegData(compressionQuality: 0.8) else {
+            return false
+        }
+        
+        do {
+            try data.write(to: fileURL)
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    /// Load image from documents directory
+    static func loadImage(withName name: String) -> UIImage? {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return nil
         }
         
-        let components = path.components(separatedBy: "/")
-        let filename = components.last ?? ""
+        let fileName = name + ".jpg"
+        let fileURL = documentsDirectory.appendingPathComponent(fileName)
         
-        var folderName = ""
-        var imageNumber: String?
-        
-        if components.count >= 2 {
-            folderName = components[components.count - 2].replacingOccurrences(of: ".imageset", with: "")
-        }
-        
-        // Improved regex-like extraction for image numbers
-        imageNumber = extractImageNumber(from: filename)
-        
-        // Build comprehensive list of possible paths
-        let possiblePaths = buildPossiblePaths(
-            originalPath: path,
-            filename: filename,
-            folderName: folderName,
-            imageNumber: imageNumber
-        )
-        
-        // Try each path sequentially
-        for tryPath in possiblePaths {
-            if let image = UIImage(named: tryPath) {
-                print("✅ Successfully loaded image with path: \(tryPath)")
-                return image
-            }
-        }
-        
-        // Special GIF handling
-        if let gifImage = tryLoadGif(imageNumber: imageNumber, folderName: folderName) {
-            return gifImage
-        }
-        
-        // Final fallback chain
-        return loadFallbackImage(originalPath: path)
-    }
-    
-    /// Extracts image number from various filename formats
-    private static func extractImageNumber(from filename: String) -> String? {
-        let patterns = ["Image-", "Image@"]
-        
-        for pattern in patterns {
-            if filename.hasPrefix(pattern) {
-                let startIndex = filename.index(filename.startIndex, offsetBy: pattern.count)
-                let remaining = String(filename[startIndex...])
-                
-                if let dotIndex = remaining.firstIndex(of: ".") {
-                    return String(remaining[..<dotIndex])
-                } else {
-                    return remaining
-                }
-            }
-        }
-        return nil
-    }
-    
-    /// Builds comprehensive list of possible image paths
-    private static func buildPossiblePaths(
-        originalPath: String,
-        filename: String,
-        folderName: String,
-        imageNumber: String?
-    ) -> [String] {
-        var paths = [String]()
-        
-        // Primary paths
-        paths.append(originalPath)
-        paths.append(filename)
-        
-        // Priority paths for known folders
-        if !folderName.isEmpty, let imgNum = imageNumber {
-            paths.append(contentsOf: [
-                "\(folderName)/Image@\(imgNum)",
-                "\(folderName)/Image-\(imgNum)",
-                "\(folderName).imageset/Image@\(imgNum)",
-                "\(folderName).imageset/Image-\(imgNum)"
-            ])
-        }
-        
-        // Standard category paths
-        let categories = ["Cards", "Celebrities", "Doge", "Gifs", "Trending", "New", "NFTs", "Images"]
-        
-        for category in categories {
-            paths.append(contentsOf: [
-                "\(category).imageset/\(filename)",
-                "\(category)/\(filename)"
-            ])
-            
-            // With image number variations
-            if let imgNum = imageNumber {
-                let extensions = ["", ".png", ".jpg", ".jpeg", ".gif"]
-                for ext in extensions {
-                    paths.append(contentsOf: [
-                        "\(category)/Image@\(imgNum)\(ext)",
-                        "\(category)/Image-\(imgNum)\(ext)",
-                        "\(category).imageset/Image@\(imgNum)\(ext)",
-                        "\(category).imageset/Image-\(imgNum)\(ext)"
-                    ])
-                }
-            }
-        }
-        
-        // NFT-specific nested paths
-        if !folderName.isEmpty, let imgNum = imageNumber {
-            let extensions = ["", ".png", ".jpg", ".jpeg", ".gif"]
-            for ext in extensions {
-                paths.append(contentsOf: [
-                    "NFTs/\(folderName)/Image@\(imgNum)\(ext)",
-                    "NFTs/\(folderName)/Image-\(imgNum)\(ext)",
-                    "NFTs.imageset/\(folderName)/Image@\(imgNum)\(ext)",
-                    "NFTs.imageset/\(folderName)/Image-\(imgNum)\(ext)"
-                ])
-            }
-        }
-        
-        // Generic fallback paths
-        if let imgNum = imageNumber {
-            paths.append(contentsOf: [
-                "Image@\(imgNum)",
-                "Image-\(imgNum)"
-            ])
-        }
-        
-        return Array(Set(paths)) // Remove duplicates while preserving order
-    }
-    
-    /// Specialized GIF loading with proper error handling
-    private static func tryLoadGif(imageNumber: String?, folderName: String) -> UIImage? {
-        guard let imgNum = imageNumber, folderName.lowercased() == "gifs" else { return nil }
-        
-        let gifVariations = ["Image@\(imgNum)", "Image-\(imgNum)"]
-        let subdirectories = ["Gifs.imageset", "Gifs", nil]
-        
-        for gifName in gifVariations {
-            for subdirectory in subdirectories {
-                if let url = Bundle.main.url(forResource: gifName, withExtension: "gif", subdirectory: subdirectory),
-                   let data = try? Data(contentsOf: url),
-                   let gifImage = UIImage(data: data) {
-                    print("✅ Loaded GIF: \(gifName) from \(subdirectory ?? "root")")
-                    return gifImage
-                }
-            }
-        }
-        
-        return nil
-    }
-    
-    /// Provides fallback images with logging
-    private static func loadFallbackImage(originalPath: String) -> UIImage? {
-        let fallbacks = ["nft-image", "placeholder", "default-nft"]
-        
-        for fallback in fallbacks {
-            if let image = UIImage(named: fallback) {
-                print("⚠️ Using fallback image '\(fallback)' for: \(originalPath)")
-                return image
-            }
-        }
-        
-        print("❌ No fallback available for: \(originalPath)")
-        return nil
-    }
-    
-    /// Gets a random image from a specific category with improved logic
-    static func randomImage(from category: String) -> UIImage? {
-        let baseFolderName = category.replacingOccurrences(of: ".imageset", with: "")
-        let imageNumber = getRandomImageNumber(for: baseFolderName)
-        
-        let possibleFormats = ["Image@\(imageNumber)", "Image-\(imageNumber)"]
-        let possibleFolders = [baseFolderName, "\(baseFolderName).imageset"]
-        
-        // Try different combinations
-        for folder in possibleFolders {
-            for format in possibleFormats {
-                let imagePath = "\(folder)/\(format)"
-                if let image = loadWithFallback(from: imagePath) {
-                    print("✅ Loaded random image: \(imagePath)")
-                    return image
-                }
-            }
-        }
-        
-        // Final fallback
-        print("⚠️ Using fallback for random image from category: \(category)")
-        return loadWithFallback(from: "nft-image")
-    }
-    
-    /// Centralized random number generation for categories
-    private static func getRandomImageNumber(for category: String) -> Int {
-        switch category.lowercased() {
-        case "doge":
-            return Int.random(in: 15...18)
-        case "cards":
-            return [9, 10, 12, 13].randomElement() ?? 9
-        case "gifs":
-            return [1, 3, 6, 7, 8, 22, 23, 25].randomElement() ?? 1
-        case "celebrities":
-            return Int.random(in: 2...5)
-        case "trending":
-            return Int.random(in: 19...21)
-        case "new":
-            return 24
-        case "nfts":
-            return Int.random(in: 1...30)
-        default:
-            return Int.random(in: 1...25)
-        }
-    }
-    
-    /// Convenience method to check if image exists without loading
-    static func imageExists(named name: String) -> Bool {
-        return UIImage(named: name) != nil
-    }
-    
-    /// Preload images for better performance
-    static func preloadImages(_ imageNames: [String]) {
-        DispatchQueue.global(qos: .background).async {
-            for imageName in imageNames {
-                _ = loadWithFallback(from: imageName)
-            }
-        }
+        return UIImage(contentsOfFile: fileURL.path)
     }
 }

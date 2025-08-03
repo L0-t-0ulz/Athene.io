@@ -7,7 +7,7 @@ struct ForYouView: View {
             username: "@Rayul",
             title: "Slango",
             description: "Heres my latest piece that I created, I hope you guys like it!",
-            imageName: "Trending/Image@19",
+            imageName: "Trending",
             hashtags: ["#newrelease"],
             creatorName: "@Rayul",
             creatorImage: "profile-image",
@@ -19,7 +19,7 @@ struct ForYouView: View {
             username: "@johnbricks",
             title: "The Wanderer of The Cosmos",
             description: "Just added a new classic collectible piece to my collection! #space",
-            imageName: "New/Image@24",
+            imageName: "New",
             hashtags: [],
             creatorName: "@CryptoJack",
             creatorImage: "profile-image",
@@ -31,7 +31,7 @@ struct ForYouView: View {
             username: "@galaxystargirl",
             title: "Chroma",
             description: "Just copped @wizardbull's latest NFT for my collection! #NFTCollector #DigitalArtIsTheFuture",
-            imageName: "image-11",
+            imageName: "Celebrities",
             hashtags: [],
             creatorName: "@wizardbull",
             creatorImage: "profile-image",
@@ -43,7 +43,7 @@ struct ForYouView: View {
             username: "@dogepunklover",
             title: "Rare Doge Alert",
             description: "Got this amazing Dogepunk! #dogepunk #nft #rare",
-            imageName: "Doge/Image@18",
+            imageName: "Doge",
             hashtags: ["#dogepunk", "#nft", "#rare"],
             creatorName: "@dogepunks",
             creatorImage: "profile-image",
@@ -55,7 +55,7 @@ struct ForYouView: View {
             username: "@gifmaster",
             title: "Animated Magic",
             description: "Check out this mesmerizing animated NFT! #animated #gif #art",
-            imageName: "Gifs/Image@8",
+            imageName: "Gifs",
             hashtags: ["#animated", "#gif", "#art"],
             creatorName: "@cryptogrin",
             creatorImage: "profile-image",
@@ -156,8 +156,12 @@ struct NFTFeedPostView: View {
         VStack(alignment: .leading, spacing: 12) {
             // User info header
             HStack {
-                // Profile photo
-                ProfileImageView(imageName: post.creatorImage, username: post.username)
+                // Profile photo  
+                FallbackAsyncImage(
+                    imageName: "Profile",
+                    size: CGSize(width: 32, height: 32),
+                    cornerRadius: 16
+                )
                 
                 Text(post.username)
                     .font(Font.custom("Noto Sans", size: 14).weight(.semibold))
@@ -174,20 +178,13 @@ struct NFTFeedPostView: View {
             .padding(.horizontal, 16)
             
             // NFT Image
-            if let uiImage = UIImage.loadWithFallback(from: post.imageName) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .aspectRatio(1, contentMode: .fit)
-                    .overlay(
-                        Text(post.title)
-                            .foregroundColor(.white)
-                    )
-            }
+            FallbackAsyncImage(
+                imageName: post.imageName,
+                size: CGSize(width: 343, height: 343),
+                cornerRadius: 8
+            )
+            .aspectRatio(contentMode: .fit)
+            .frame(maxWidth: .infinity)
             
             // Action buttons
             HStack(spacing: 16) {
@@ -236,8 +233,12 @@ struct NFTFeedPostView: View {
                     .font(Font.custom("Noto Sans", size: 12))
                     .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
                 
-                ProfileImageView(imageName: post.creatorImage, username: post.creatorName, size: 20)
-                    .padding(.horizontal, 4)
+                FallbackAsyncImage(
+                    imageName: "Profile",
+                    size: CGSize(width: 20, height: 20),
+                    cornerRadius: 10
+                )
+                .padding(.horizontal, 4)
                 
                 Text(post.creatorName)
                     .font(Font.custom("Noto Sans", size: 12))
@@ -250,31 +251,7 @@ struct NFTFeedPostView: View {
     }
 }
 
-struct ProfileImageView: View {
-    let imageName: String
-    let username: String
-    var size: CGFloat = 32
-    
-    var body: some View {
-        if let image = UIImage(named: imageName) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: size, height: size)
-                .clipShape(Circle())
-        } else {
-            ZStack {
-                Circle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: size, height: size)
-                
-                Text(String(username.dropFirst()).prefix(1).uppercased())
-                    .font(.system(size: size * 0.4, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        }
-    }
-}
+// ProfileImageView removed - replaced with FallbackAsyncImage throughout the app
 
 struct ForYouView_Previews: PreviewProvider {
     static var previews: some View {
