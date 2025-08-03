@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Enhanced NFT Art Card with improved layout and accessibility
 struct NFTArtCard: View {
@@ -13,7 +14,6 @@ struct NFTArtCard: View {
     
     @State private var imageLoadError = false
     @State private var isPressed = false
-    @EnvironmentObject var imageLoader: ImageLoader
     
     init(
         title: String,
@@ -366,7 +366,6 @@ struct NFTArtCard_Previews: PreviewProvider {
             }
             .previewDisplayName("Grid View")
         }
-        .environmentObject(ImageLoader.shared)
         .environmentObject(FontManager.shared)
     }
 }

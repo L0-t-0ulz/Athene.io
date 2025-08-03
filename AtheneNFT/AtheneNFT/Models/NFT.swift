@@ -40,6 +40,65 @@ struct NFT: Identifiable, Codable, Hashable {
     }
 }
 
+// MARK: - NFTItem (Simplified NFT model for UI components)
+struct NFTItem: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let creator: String
+    let creatorUsername: String
+    let imageName: String
+    
+    static func == (lhs: NFTItem, rhs: NFTItem) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    // Create from NFT model
+    init(from nft: NFT) {
+        self.title = nft.title
+        self.creator = nft.creator.displayName
+        self.creatorUsername = nft.creator.displayUsername
+        self.imageName = nft.imageURL.components(separatedBy: "/").last ?? "nft-image"
+    }
+    
+    // Create directly
+    init(title: String, creator: String, creatorUsername: String, imageName: String) {
+        self.title = title
+        self.creator = creator
+        self.creatorUsername = creatorUsername
+        self.imageName = imageName
+    }
+}
+
+// MARK: - Sample Data Generation
+func generateSampleNFTItems(count: Int, startIndex: Int = 0) -> [NFTItem] {
+    let sampleTitles = [
+        "Cryptopunk Heritage", "Digital Dreams", "Neon Genesis", "Pixel Paradise",
+        "Cyber Samurai", "Virtual Visions", "Meta Masterpiece", "Blockchain Beauty",
+        "Token Treasure", "Digital Dynasty", "NFT Noir", "Pixel Poetry",
+        "Crypto Canvas", "Virtual Velocity", "Digital Dimension"
+    ]
+    
+    let sampleCreators = [
+        "@ArtMaster", "@CryptoKing", "@PixelPro", "@NFTNinja",
+        "@DigitalDreamer", "@BlockchainBoss", "@MetaArtist", "@CyberCreator"
+    ]
+    
+    let sampleUsernames = [
+        "@john_doe", "@jane_smith", "@crypto_lover", "@art_enthusiast",
+        "@pixel_painter", "@digital_wizard", "@nft_collector", "@meta_master"
+    ]
+    
+    return (0..<count).map { index in
+        let adjustedIndex = startIndex + index
+        return NFTItem(
+            title: sampleTitles[adjustedIndex % sampleTitles.count],
+            creator: sampleCreators[adjustedIndex % sampleCreators.count],
+            creatorUsername: sampleUsernames[adjustedIndex % sampleUsernames.count],
+            imageName: "Image@\(Int.random(in: 1...25))"
+        )
+    }
+}
+
 struct User: Identifiable, Codable, Hashable {
     let id: String
     let username: String

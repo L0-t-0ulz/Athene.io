@@ -1,38 +1,6 @@
 import SwiftUI
 import UIKit
-
-// MARK: - Image Loader (Singleton Pattern)
-class ImageLoader {
-    static let shared = ImageLoader()
-    private var imageCache = NSCache<NSString, UIImage>()
-    
-    private init() {
-        // Configure cache
-        imageCache.countLimit = 100
-        imageCache.totalCostLimit = 50 * 1024 * 1024 // 50MB
-    }
-    
-    func loadImage(named imageName: String) -> UIImage? {
-        let cacheKey = NSString(string: imageName)
-        
-        // Check cache first
-        if let cachedImage = imageCache.object(forKey: cacheKey) {
-            return cachedImage
-        }
-        
-        // Try to load from bundle
-        if let image = UIImage(named: imageName) {
-            imageCache.setObject(image, forKey: cacheKey)
-            return image
-        }
-        
-        return nil
-    }
-    
-    func clearCache() {
-        imageCache.removeAllObjects()
-    }
-}
+import Combine
 
 // MARK: - UIImage Extension
 extension UIImage {
@@ -205,13 +173,16 @@ struct UIKitImageView: UIViewRepresentable {
     }
     
     private func loadImageWithFallbacks() -> UIImage? {
-        // Strategy 1: Use ImageLoader for consistent caching
-        if let image = ImageLoader.shared.loadImage(named: imageName) {
+        // Try UIImage extension with fallbacks
+        if let image = UIImage.loadWithFallback(from: imageName) {
             return image
         }
         
-        // Strategy 2: Try UIImage extension with fallbacks
-        return UIImage.loadWithFallback(from: imageName)
+        // If that fails, create a placeholder
+        return UIImage.createPlaceholder(
+            size: CGSize(width: width, height: height),
+            backgroundColor: UIColor(red: 0.5, green: 0.23, blue: 0.27, alpha: 0.5)
+        )
     }
     
     private func styleImageView(_ imageView: UIImageView) {
@@ -400,27 +371,6 @@ extension UIKitImageView {
     }
 }
 
-// MARK: - Advanced Image Loading Extensions
-extension ImageLoader {
-    
-    /// Preload multiple images for better performance
-    func preloadImages(_ imageNames: [String]) {
-        DispatchQueue.global(qos: .background).async {
-            for imageName in imageNames {
-                _ = self.loadImage(named: imageName)
-            }
-        }
-    }
-    
-    /// Get cache statistics
-    var cacheInfo: (count: Int, totalCost: Int) {
-        return (
-            count: imageCache.countLimit,
-            totalCost: imageCache.totalCostLimit
-        )
-    }
-}
-
 // MARK: - Error Handling and Debugging
 extension UIKitImageView {
     
@@ -515,11 +465,11 @@ struct UIKitImageView_Previews: PreviewProvider {
             )
         )
         .onAppear {
-            // Preload some test images
-            ImageLoader.shared.preloadImages([
+            // Preload test images
+            let _ = [
                 "sample-nft", "profile1", "profile2", "profile3",
                 "thumb1", "thumb2", "thumb3", "hero-image", "custom-image"
-            ])
+            ].forEach { UIImage.loadWithFallback(from: $0) }
         }
     }
 }
