@@ -270,9 +270,9 @@ struct NFTCardView: View {
             }
         }
         
-        // Check for actual image load error
+        // Check for actual image load error using ImageLoader
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            if UIImage(named: imageName) == nil {
+            if ImageLoader.loadImage(named: imageName) == nil {
                 imageLoadError = true
             }
         }
@@ -418,6 +418,5 @@ struct NFTCardView_Previews: PreviewProvider {
             )
             .previewDisplayName("Scrollable Grid")
         }
-        .environmentObject(FontManager.shared)
     }
 }

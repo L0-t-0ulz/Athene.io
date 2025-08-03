@@ -4,18 +4,45 @@ import UIKit
 // MARK: - Image Loading Utility
 struct ImageLoader {
     static func loadImage(named imageName: String) -> UIImage? {
-        // Try to load from Assets.xcassets first
+        // Direct asset name lookup first
         if let image = UIImage(named: imageName) {
             return image
         }
         
-        // Try different variations
+        // Map common names to actual assets
+        let assetMapping: [String: String] = [
+            "Profile": "Profile",
+            "profile": "Profile", 
+            "profile-image": "Profile",
+            "New": "New",
+            "new": "New",
+            "Trending": "Trending", 
+            "trending": "Trending",
+            "Cards": "Cards",
+            "cards": "Cards",
+            "Doge": "Doge",
+            "doge": "Doge",
+            "Gifs": "Gifs", 
+            "gifs": "Gifs",
+            "Celebrities": "Celebrities",
+            "celebrities": "Celebrities"
+        ]
+        
+        // Try mapped asset name
+        if let mappedName = assetMapping[imageName] {
+            if let image = UIImage(named: mappedName) {
+                return image
+            }
+        }
+        
+        // Try various fallback combinations
         let variations = [
             imageName,
-            imageName + ".png",
-            imageName + ".jpg",
+            imageName.components(separatedBy: "/").last ?? imageName,
+            imageName.replacingOccurrences(of: "/", with: ""),
+            imageName.replacingOccurrences(of: "Image@", with: ""),
             imageName.replacingOccurrences(of: "@", with: ""),
-            imageName.replacingOccurrences(of: "Image@", with: "image-")
+            "New", "Trending", "Cards", "Doge", "Gifs", "Celebrities", "Profile"
         ]
         
         for variation in variations {

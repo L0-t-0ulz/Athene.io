@@ -58,33 +58,116 @@ struct DiscoverView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.ignoresSafeArea()
+                // Background
+                Color.black.ignoresSafeArea(.all)
                 
                 VStack(spacing: 0) {
-                    // Header with safe area
+                    // Fixed Header
                     headerView(geometry: geometry)
                     
-                    // Search bar
+                    // Fixed Search Bar
                     searchBarView(geometry: geometry)
                     
-                    // Content with proper scrolling
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 32) {
-                            // Featured Categories
-                            featuredCategoriesView(geometry: geometry)
-                            
-                            // Category Sections
-                            ForEach(NFTCategory.allCases, id: \.self) { category in
-                                categorySection(category: category, geometry: geometry)
+                    // SCROLLABLE CONTENT - Following SwiftUI best practices
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 24) {
+                            // Featured Categories Section
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Featured Categories")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(NFTCategory.allCases, id: \.self) { category in
+                                            CategoryChip(
+                                                category: category,
+                                                isSelected: selectedCategory == category
+                                            ) {
+                                                selectedCategory = selectedCategory == category ? nil : category
+                                                haptic.impactOccurred()
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
                             }
                             
-                            // Bottom padding for tab bar
-                            Spacer()
-                                .frame(height: 100)
+                            // NFT Grid Content - Multiple sections to ensure scrollable height
+                            ForEach(NFTCategory.allCases, id: \.self) { category in
+                                VStack(alignment: .leading, spacing: 16) {
+                                    // Section Header
+                                    HStack {
+                                        Text(category.displayName)
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button("View All") {
+                                            // Action
+                                        }
+                                        .foregroundColor(.blue)
+                                        .font(.caption)
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    // NFT Grid for this category
+                                    LazyVGrid(columns: [
+                                        GridItem(.flexible(), spacing: 16),
+                                        GridItem(.flexible(), spacing: 16)
+                                    ], spacing: 16) {
+                                        ForEach(sampleData.nfts(for: category).prefix(6), id: \.id) { item in
+                                            NFTGridCard(item: item)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+                            
+                            // Additional scrollable content to guarantee scroll
+                            VStack(spacing: 20) {
+                                Text("More NFT Collections")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                
+                                ForEach(0..<10, id: \.self) { index in
+                                    HStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(width: 60, height: 60)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text("Collection \(index + 1)")
+                                                .foregroundColor(.white)
+                                                .font(.headline)
+                                            Text("Trending NFT Collection")
+                                                .foregroundColor(.gray)
+                                                .font(.caption)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding()
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(12)
+                                }
+                            }
+                            .padding()
+                            
+                            // Bottom padding for tab bar - CRITICAL for scrolling
+                            Spacer(minLength: 120)
                         }
-                        .padding(.top, 10)
+                        .padding(.top, 8)
                     }
-                    .clipped() // Ensures content doesn't overflow
+                    // Remove any frame constraints that could prevent scrolling
                 }
             }
             .navigationBarHidden(true)
@@ -241,22 +324,54 @@ struct DiscoverView: View {
 struct CategoryChip: View {
     let category: NFTCategory
     let isSelected: Bool
-    let onTap: () -> Void
+    let action: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
+        Button(action: action) {
             Text(category.displayName)
-                .font(Font.custom("Noto Sans", size: 14).weight(.medium))
-                .foregroundColor(isSelected ? .black : .white)
+                .font(.caption)
+                .fontWeight(.medium)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.white : Color.white.opacity(0.1))
+                    isSelected ? Color.blue : Color.gray.opacity(0.2)
                 )
+                .foregroundColor(isSelected ? .white : .gray)
+                .cornerRadius(16)
         }
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.spring(response: 0.3), value: isSelected)
+    }
+}
+
+// MARK: - NFT Grid Card Component
+struct NFTGridCard: View {
+    let item: NFTItemData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // NFT Image
+            FallbackAsyncImage(
+                imageName: item.imageName,
+                size: CGSize(width: 160, height: 160),
+                contentMode: .fill,
+                cornerRadius: 12
+            )
+            
+            // NFT Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Text(item.creator.username)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+                    .lineLimit(1)
+            }
+        }
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
     }
 }
 
@@ -577,31 +692,31 @@ class SampleNFTData {
         // Initialize sample data for each category
         let newItems = [
             NFTItemData(
-                title: "Dogepunk x Cybertruck",
-                creator: User(id: "c1", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-1"),
+                title: "New Digital Art",
+                creator: User(id: "c1", username: "@newartist", displayName: "New Artist", profileImage: "Profile"),
                 username: "@theaibender",
-                imageName: "Doge/Image@18",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Hotdog",
-                creator: User(id: "c2", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-2"),
+                title: "Fresh Collection",
+                creator: User(id: "c2", username: "@freshcreator", displayName: "Fresh Creator", profileImage: "Profile"),
                 username: "@theabstractor",
-                imageName: "Doge/Image@17",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Aquaking",
-                creator: User(id: "c3", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-3"),
+                title: "Latest Drop",
+                creator: User(id: "c3", username: "@latestdrop", displayName: "Latest Drop", profileImage: "Profile"),
                 username: "@haykronmiyc",
-                imageName: "Doge/Image@16",
+                imageName: "New",
                 category: .new
             ),
             NFTItemData(
-                title: "Dogepunk x Socialite",
-                creator: User(id: "c4", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-4"),
+                title: "Newest Mint",
+                creator: User(id: "c4", username: "@newestmint", displayName: "Newest Mint", profileImage: "Profile"),
                 username: "@jonboyeq43",
-                imageName: "Doge/Image@15",
+                imageName: "New",
                 category: .new
             )
         ]
@@ -609,23 +724,23 @@ class SampleNFTData {
         let trendingItems = [
             NFTItemData(
                 title: "The Hazy Maze",
-                creator: User(id: "t1", username: "@jonahlipps", displayName: "Jonah Lipps", profileImage: "profile-3"),
+                creator: User(id: "t1", username: "@jonahlipps", displayName: "Jonah Lipps", profileImage: "Profile"),
                 username: "@jonahlipps",
-                imageName: "Trending/Image@19",
+                imageName: "Trending",
                 category: .trending
             ),
             NFTItemData(
                 title: "Splash",
-                creator: User(id: "t2", username: "@aalvarez", displayName: "A Alvarez", profileImage: "profile-4"),
+                creator: User(id: "t2", username: "@aalvarez", displayName: "A Alvarez", profileImage: "Profile"),
                 username: "@aalvarez",
-                imageName: "Trending/Image@20",
+                imageName: "Trending",
                 category: .trending
             ),
             NFTItemData(
                 title: "Abstract Thoughts",
-                creator: User(id: "t3", username: "@abstract_mind", displayName: "Abstract Mind", profileImage: "profile-9"),
+                creator: User(id: "t3", username: "@abstract_mind", displayName: "Abstract Mind", profileImage: "Profile"),
                 username: "@abstract_mind",
-                imageName: "Trending/Image@21",
+                imageName: "Trending",
                 category: .trending
             )
         ]
@@ -633,16 +748,16 @@ class SampleNFTData {
         let dogeItems = [
             NFTItemData(
                 title: "Doge King",
-                creator: User(id: "d1", username: "@dogemaster", displayName: "Doge Master", profileImage: "profile-doge1"),
+                creator: User(id: "d1", username: "@dogemaster", displayName: "Doge Master", profileImage: "Profile"),
                 username: "@dogemaster",
-                imageName: "Doge/Image@15",
+                imageName: "Doge",
                 category: .doge
             ),
             NFTItemData(
                 title: "Space Doge",
-                creator: User(id: "d2", username: "@spacedoge", displayName: "Space Doge", profileImage: "profile-doge2"),
+                creator: User(id: "d2", username: "@spacedoge", displayName: "Space Doge", profileImage: "Profile"),
                 username: "@spacedoge",
-                imageName: "Doge/Image@16",
+                imageName: "Doge",
                 category: .doge
             )
         ]
@@ -650,16 +765,16 @@ class SampleNFTData {
         let cardItems = [
             NFTItemData(
                 title: "Prometheus",
-                creator: User(id: "c1", username: "@royalcards", displayName: "Royal Cards", profileImage: "profile-cards"),
+                creator: User(id: "c1", username: "@royalcards", displayName: "Royal Cards", profileImage: "Profile"),
                 username: "@jenna453",
-                imageName: "Cards/Image@10",
+                imageName: "Cards",
                 category: .cards
             ),
             NFTItemData(
                 title: "The Vitalik Card",
-                creator: User(id: "c2", username: "@dogepunks", displayName: "DogePunks", profileImage: "profile-cards"),
+                creator: User(id: "c2", username: "@cardmaster", displayName: "Card Master", profileImage: "Profile"),
                 username: "@lisart",
-                imageName: "Cards/Image@12",
+                imageName: "Cards",
                 category: .cards
             )
         ]
@@ -667,16 +782,16 @@ class SampleNFTData {
         let gifItems = [
             NFTItemData(
                 title: "Confused Picasso",
-                creator: User(id: "g1", username: "@cryptogrin", displayName: "Crypto Grin", profileImage: "profile-gif"),
+                creator: User(id: "g1", username: "@cryptogrin", displayName: "Crypto Grin", profileImage: "Profile"),
                 username: "@cryptoori",
-                imageName: "Gifs/Image@1",
+                imageName: "Gifs",
                 category: .gifs
             ),
             NFTItemData(
                 title: "Kitty Gif",
-                creator: User(id: "g2", username: "@mrrerb", displayName: "Mr. Rerb", profileImage: "profile-gif"),
+                creator: User(id: "g2", username: "@mrrerb", displayName: "Mr. Rerb", profileImage: "Profile"),
                 username: "@theabstractor",
-                imageName: "Gifs/Image@3",
+                imageName: "Gifs",
                 category: .gifs
             )
         ]
@@ -684,16 +799,16 @@ class SampleNFTData {
         let celebrityItems = [
             NFTItemData(
                 title: "Logan Paul Card",
-                creator: User(id: "cel1", username: "@cryptogrin3", displayName: "Crypto Grin 3", profileImage: "profile-celebrity"),
+                creator: User(id: "cel1", username: "@cryptogrin3", displayName: "Crypto Grin 3", profileImage: "Profile"),
                 username: "@cryptogrin33",
-                imageName: "Celebrities/Image@2",
+                imageName: "Celebrities",
                 category: .celebrities
             ),
             NFTItemData(
                 title: "Dicaprio Meme",
-                creator: User(id: "cel3", username: "@instamiyu", displayName: "Instamiyu", profileImage: "profile-celebrity"),
+                creator: User(id: "cel3", username: "@instamiyu", displayName: "Instamiyu", profileImage: "Profile"),
                 username: "@instamiyu",
-                imageName: "Celebrities/Image@4",
+                imageName: "Celebrities",
                 category: .celebrities
             )
         ]
@@ -714,6 +829,10 @@ class SampleNFTData {
     
     func getAllItems() -> [NFTItemData] {
         return categories.values.flatMap { $0 }
+    }
+    
+    func nfts(for category: NFTCategory) -> [NFTItemData] {
+        return categories[category] ?? []
     }
 }
 
