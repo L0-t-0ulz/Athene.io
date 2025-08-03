@@ -156,8 +156,12 @@ struct NFTFeedPostView: View {
         VStack(alignment: .leading, spacing: 12) {
             // User info header
             HStack {
-                // Profile photo
-                ProfileImageView(imageName: post.creatorImage, username: post.username)
+                // Profile photo  
+                FallbackAsyncImage(
+                    imageName: "Profile",
+                    size: CGSize(width: 32, height: 32),
+                    cornerRadius: 16
+                )
                 
                 Text(post.username)
                     .font(Font.custom("Noto Sans", size: 14).weight(.semibold))
@@ -174,20 +178,13 @@ struct NFTFeedPostView: View {
             .padding(.horizontal, 16)
             
             // NFT Image
-            if let uiImage = UIImage.loadWithFallback(from: post.imageName) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .aspectRatio(1, contentMode: .fit)
-                    .overlay(
-                        Text(post.title)
-                            .foregroundColor(.white)
-                    )
-            }
+            FallbackAsyncImage(
+                imageName: post.imageName,
+                size: CGSize(width: 343, height: 343),
+                cornerRadius: 8
+            )
+            .aspectRatio(contentMode: .fit)
+            .frame(maxWidth: .infinity)
             
             // Action buttons
             HStack(spacing: 16) {
@@ -236,8 +233,12 @@ struct NFTFeedPostView: View {
                     .font(Font.custom("Noto Sans", size: 12))
                     .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
                 
-                ProfileImageView(imageName: post.creatorImage, username: post.creatorName, size: 20)
-                    .padding(.horizontal, 4)
+                FallbackAsyncImage(
+                    imageName: "Profile",
+                    size: CGSize(width: 20, height: 20),
+                    cornerRadius: 10
+                )
+                .padding(.horizontal, 4)
                 
                 Text(post.creatorName)
                     .font(Font.custom("Noto Sans", size: 12))

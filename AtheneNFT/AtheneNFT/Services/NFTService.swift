@@ -218,7 +218,7 @@ class NFTService: ObservableObject {
         }
         
         let imageBase64 = image.base64EncodedString()
-        let createRequest = CreateNFTRequest(
+        let _ = CreateNFTRequest(
             title: title,
             description: description,
             price: price,
