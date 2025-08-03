@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Enhanced NFT Card View with modern design and smooth interactions
 struct NFTCardView: View {
@@ -10,7 +11,6 @@ struct NFTCardView: View {
     @State private var isImageLoaded = false
     @State private var imageLoadError = false
     @State private var isHovered = false
-    @EnvironmentObject var imageLoader: ImageLoader
     
     var body: some View {
         VStack(spacing: 0) {
@@ -267,9 +267,25 @@ struct NFTCardView: View {
         
         // Check for actual image load error
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            if imageLoader.loadImage(named: imageName) == nil {
+            if UIImage(named: imageName) == nil {
                 imageLoadError = true
             }
+        }
+    }
+}
+
+// MARK: - Simple AsyncImageView
+struct AsyncImageView: View {
+    let imageName: String
+    let placeholder: Image?
+    
+    var body: some View {
+        if let uiImage = UIImage(named: imageName) {
+            Image(uiImage: uiImage)
+                .resizable()
+        } else {
+            placeholder ?? Image(systemName: "photo")
+                .foregroundColor(.gray)
         }
     }
 }
@@ -409,7 +425,6 @@ struct NFTCardView_Previews: PreviewProvider {
             )
             .previewDisplayName("Two-Column Grid")
         }
-        .environmentObject(ImageLoader.shared)
         .environmentObject(FontManager.shared)
     }
 }
