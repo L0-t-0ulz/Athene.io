@@ -1,0 +1,21 @@
+my-metamask-login-app/
+├── client/                  # React frontend
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Login.js
+│   │   │   ├── Profile.js
+│   │   ├── App.js
+│   │   ├── index.js
+│   │   ├── web3.js
+│   ├── package.json
+├── server/                  # Node.js backend
+│   ├── models/
+│   │   ├── User.js
+│   ├── routes/
+│   │   ├── user.js
+│   ├── config/
+│   │   ├── db.js
+│   ├── server.js
+│   ├── package.json
+└── README.md
