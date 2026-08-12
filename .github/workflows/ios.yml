@@ -1,0 +1,51 @@
+name: iOS - Build, Analyze & Test
+
+on:
+  push:
+    branches: [ "keys" ]
+  pull_request:
+    branches: [ "keys" ]
+
+env:
+  SCHEME: AtheneNFT
+  PROJECT: AtheneNFT/AtheneNFT.xcodeproj
+  DESTINATION: platform=iOS Simulator,name=iPhone 16
+
+jobs:
+  build-and-analyze:
+    name: Build and analyze
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and analyze
+        run: |
+          xcodebuild clean build analyze \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION"
+
+  test:
+    name: Unit and UI tests
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -resultBundlePath TestResults.xcresult
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults.xcresult
