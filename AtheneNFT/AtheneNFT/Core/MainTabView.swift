@@ -9,25 +9,18 @@ struct MainTabView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
+            // Share (tag 2) is intentionally absent: it opens as a modal from the
+            // center tab button, so there is no swipe-reachable blank page.
             TabView(selection: $selectedTab) {
                 HomeView()
                     .tag(0)
-                
+
                 DiscoverView()
                     .tag(1)
-                
-                Color.clear
-                    .tag(2)
-                    .onAppear {
-                        if selectedTab == 2 {
-                            showWalletTransfer = true
-                            selectedTab = 0 // Reset to home after showing modal
-                        }
-                    }
-                
+
                 NotificationsView()
                     .tag(3)
-                
+
                 ProfileView()
                     .tag(4)
             }
@@ -149,14 +142,12 @@ struct TabButton: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 bounceScale = 1.2
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            } completion: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     bounceScale = 1.0
                 }
             }
-            
+
             action()
         }
     }
@@ -190,14 +181,12 @@ struct ShareButton: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 bounceScale = 0.9
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            } completion: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     bounceScale = 1.0
                 }
             }
-            
+
             action()
         }
     }

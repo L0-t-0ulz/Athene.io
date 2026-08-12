@@ -3,7 +3,7 @@ import UIKit
 
 struct HomeView: View {
     @State private var isRefreshing = false
-    @State private var hapticFeedback = UIImpactFeedbackGenerator(style: .light)
+    private let hapticFeedback = UIImpactFeedbackGenerator(style: .light)
     @State private var scrollToTopTrigger = false
     @State private var scrollToBottomTrigger = false
     
@@ -58,9 +58,28 @@ struct HomeView: View {
                                 }
 
                                 // NFT posts
-                                ForEach(getMockNFTs()) { nft in
-                                    NFTPostView(nft: nft, geometry: geometry)
-                                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                                let posts = getMockNFTs()
+                                if posts.isEmpty {
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "photo.on.rectangle.angled")
+                                            .font(.system(size: 44))
+                                            .foregroundColor(.gray)
+
+                                        Text("No posts yet")
+                                            .font(Font.custom("Noto Sans", size: 18).weight(.semibold))
+                                            .foregroundColor(.white)
+
+                                        Text("Follow creators to fill your feed.")
+                                            .font(Font.custom("Noto Sans", size: 14))
+                                            .foregroundColor(.gray)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.top, 80)
+                                } else {
+                                    ForEach(posts) { nft in
+                                        NFTPostView(nft: nft, geometry: geometry)
+                                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                                    }
                                 }
 
                                 // Bottom anchor
@@ -181,7 +200,7 @@ struct HomeView: View {
                 creator: creators[4],
                 createdAt: Date().addingTimeInterval(-18000),
                 blockchain: .ethereum,
-                contract: "0xGHI789",
+                contract: "0xAB1789",
                 tokenId: "5",
                 isLiked: true,
                 likeCount: 421,
@@ -196,7 +215,7 @@ struct HomeView: View {
                 creator: creators[0],
                 createdAt: Date().addingTimeInterval(-21600),
                 blockchain: .ethereum,
-                contract: "0xJKL012",
+                contract: "0xBC4012",
                 tokenId: "6",
                 isLiked: false,
                 likeCount: 67,
@@ -214,7 +233,23 @@ struct NFTPostView: View {
     @State private var imageHeight: CGFloat = 0
     @State private var isLiked: Bool = false
     @State private var likeScale: CGFloat = 1.0
+    @State private var showComments = false
+    @State private var showLinkCopied = false
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
+
+    /// Shared avatar gradient for the post header and "Created by" badge.
+    private static let avatarGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(red: 0.6, green: 0.4, blue: 0.2),
+            Color(red: 0.3, green: 0.2, blue: 0.1)
+        ]),
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    private var shareURL: URL? {
+        NFTService.shared.shareNFT(nft: nft)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -228,17 +263,10 @@ struct NFTPostView: View {
             
                     // Profile image overlay with gradient background
                     Circle()
-                        .fill(LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.6, green: 0.4, blue: 0.2),
-                                Color(red: 0.3, green: 0.2, blue: 0.1)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ))
+                        .fill(Self.avatarGradient)
                         .frame(width: DynamicSizing.size(base: 38, geometry: geometry), height: DynamicSizing.size(base: 38, geometry: geometry))
                         .overlay(
-                            Text(String(nft.creator.username.dropFirst(1).prefix(1)).capitalized)
+                            Text(nft.creator.username.avatarInitial)
                                 .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 15, geometry: geometry)).weight(.bold))
                                 .foregroundColor(.white)
                         )
@@ -252,7 +280,28 @@ struct NFTPostView: View {
                 Spacer()
                 
                 // Options button
-                Button(action: {}) {
+                Menu {
+                    if let url = shareURL {
+                        ShareLink(item: url) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        Button {
+                            UIPasteboard.general.url = url
+                            haptic.impactOccurred()
+                            showLinkCopied = true
+                        } label: {
+                            Label("Copy Link", systemImage: "link")
+                        }
+                    }
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            isLiked.toggle()
+                        }
+                        haptic.impactOccurred()
+                    } label: {
+                        Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash" : "heart")
+                    }
+                } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 18))
                         .foregroundColor(.white)
@@ -284,13 +333,11 @@ struct NFTPostView: View {
             HStack(spacing: DynamicSizing.spacing(base: 16, geometry: geometry)) {
                 // Like button with animation
                 Button(action: {
+                    haptic.impactOccurred()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                         isLiked.toggle()
                         likeScale = isLiked ? 1.2 : 1.0
-                    }
-                    haptic.impactOccurred()
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    } completion: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             likeScale = 1.0
                         }
@@ -305,21 +352,25 @@ struct NFTPostView: View {
                 // Comment button
                 Button(action: {
                     haptic.impactOccurred()
+                    showComments = true
                 }) {
                     Image(systemName: "message")
                         .font(.system(size: DynamicSizing.size(base: 22, geometry: geometry)))
                         .foregroundColor(.white)
                 }
-                
+
                 // Share button
-                Button(action: {
-                    haptic.impactOccurred()
-                }) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: DynamicSizing.size(base: 22, geometry: geometry)))
-                        .foregroundColor(.white)
+                if let url = shareURL {
+                    ShareLink(item: url) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: DynamicSizing.size(base: 22, geometry: geometry)))
+                            .foregroundColor(.white)
+                    }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        haptic.impactOccurred()
+                    })
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal, DynamicSizing.padding(base: 16, geometry: geometry))
@@ -351,17 +402,10 @@ struct NFTPostView: View {
                 
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 0.6, green: 0.4, blue: 0.2),
-                                Color(red: 0.3, green: 0.2, blue: 0.1)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ))
+                        .fill(Self.avatarGradient)
                         .frame(width: 20, height: 20)
                     
-                    Text(String(nft.creator.username.dropFirst(1).prefix(1)).capitalized)
+                    Text(nft.creator.username.avatarInitial)
                         .font(Font.custom("Noto Sans", size: 10).weight(.bold))
                         .foregroundColor(.white)
                 }
@@ -383,16 +427,28 @@ struct NFTPostView: View {
                 .foregroundColor(Color.gray.opacity(0.15)),
             alignment: .bottom
         )
+        .alert("Comments", isPresented: $showComments) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Comments are coming soon.")
+        }
+        .alert("Link Copied", isPresented: $showLinkCopied) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The NFT link is on your clipboard.")
+        }
     }
-    
+
     private func buildCaptionText(for nft: NFT) -> Text {
         let text = nft.description
-        
+
         if text.contains("#") {
-            let components = text.components(separatedBy: " ")
-            
+            // Split on all whitespace (incl. newlines) so hashtags on their own
+            // line are still styled.
+            let components = text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+
             var result = Text("")
-            
+
             for (index, component) in components.enumerated() {
                 if component.hasPrefix("#") {
                     // This is a hashtag

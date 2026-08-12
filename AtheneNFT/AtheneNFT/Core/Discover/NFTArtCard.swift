@@ -118,7 +118,7 @@ struct NFTArtCard: View {
                     ))
                     .frame(width: 32, height: 32)
                     .overlay(
-                        Text(String(username.dropFirst(1).prefix(1)).capitalized)
+                        Text(username.avatarInitial)
                             .font(FontUtility.responsiveFont(baseSize: 12, geometry: geometry, weight: .bold))
                             .foregroundColor(.white)
                     )
@@ -198,7 +198,7 @@ struct NFTArtCard: View {
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 24, height: 24)
                     .overlay(
-                        Text(String(creator.dropFirst(1).prefix(1)).capitalized)
+                        Text(creator.avatarInitial)
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                     )
@@ -224,7 +224,7 @@ struct NFTCardButtonStyle: ButtonStyle {
 struct AnimatedNFTCard: View {
     let nftItem: NFTItem
     @State private var isLiked = false
-    @State private var likeCount = Int.random(in: 5...50)
+    @State private var likeCount = 23
     @State private var showingDetail = false
     
     var body: some View {
@@ -250,13 +250,15 @@ struct AnimatedNFTCard: View {
             }
         )
         .sheet(isPresented: $showingDetail) {
-            NFTDetailView(nftItem: nftItem)
+            NFTArtCardDetailView(nftItem: nftItem)
         }
     }
 }
 
 // MARK: - NFT Detail View
-struct NFTDetailView: View {
+// Named NFTArtCardDetailView to avoid colliding with ProfileView.swift's
+// NFTDetailView if this file is ever added to the app target.
+struct NFTArtCardDetailView: View {
     let nftItem: NFTItem
     @Environment(\.dismiss) private var dismiss
     

@@ -10,43 +10,57 @@ struct ProfileView: View {
     @State private var showingSettings = false
     @State private var followersCount = 834
     @State private var isFollowing = false
+    @State private var showMessageAlert = false
     @Namespace var namespace
     private let haptic = UIImpactFeedbackGenerator(style: .light)
 
+    private let profileUsername = "ben_parker53"
+    private var profileShareText: String {
+        "Check out @\(profileUsername) on AtheneNFT"
+    }
+
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Header with proper safe area handling
-                    headerView(geometry: geometry)
-                    
-                    // Main scrollable content
-                    ScrollView {
-                        LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            // Profile section
-                            profileSection(geometry: geometry)
-                            
-                            // Tab selector as pinned header
-                            Section(header: tabSelectorHeader(geometry: geometry)) {
-                                // Gallery content
-                                galleryContent(geometry: geometry)
+        // NavigationStack is required for the grid's NavigationLinks to work
+        NavigationStack {
+            GeometryReader { geometry in
+                ZStack {
+                    Color.black.ignoresSafeArea()
+
+                    VStack(spacing: 0) {
+                        // Header with proper safe area handling
+                        headerView(geometry: geometry)
+
+                        // Main scrollable content
+                        ScrollView {
+                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                // Profile section
+                                profileSection(geometry: geometry)
+
+                                // Tab selector as pinned header
+                                Section(header: tabSelectorHeader(geometry: geometry)) {
+                                    // Gallery content
+                                    galleryContent(geometry: geometry)
+                                }
                             }
                         }
-                    }
-                    .refreshable {
-                        await refreshContent()
+                        .refreshable {
+                            await refreshContent()
+                        }
                     }
                 }
+                .navigationBarHidden(true)
             }
-            .navigationBarHidden(true)
         }
         .onAppear {
             haptic.prepare()
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .alert("Messages", isPresented: $showMessageAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Direct messaging is coming soon.")
         }
     }
     
@@ -74,15 +88,15 @@ struct ProfileView: View {
                     .foregroundColor(.white)
                 
                 Spacer()
-                
-                Button(action: {
-                    haptic.impactOccurred()
-                    // Add share functionality
-                }) {
+
+                ShareLink(item: profileShareText) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                    haptic.impactOccurred()
+                })
             }
             .padding(.horizontal, 20)
             .frame(height: DynamicSizing.size(base: 64, geometry: geometry))
@@ -150,11 +164,10 @@ struct ProfileView: View {
         }
         .scaleEffect(profileScale)
         .onTapGesture {
+            haptic.impactOccurred()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 profileScale = 0.95
-            }
-            haptic.impactOccurred()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            } completion: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     profileScale = 1.0
                 }
@@ -230,7 +243,7 @@ struct ProfileView: View {
             // Message button
             Button(action: {
                 haptic.impactOccurred()
-                // Add message functionality
+                showMessageAlert = true
             }) {
                 Image(systemName: "message.fill")
                     .font(.system(size: 18, weight: .medium))
@@ -241,12 +254,19 @@ struct ProfileView: View {
                             .fill(Color.white.opacity(0.2))
                     )
             }
-            
+
             // More options button
-            Button(action: {
-                haptic.impactOccurred()
-                // Add more options
-            }) {
+            Menu {
+                ShareLink(item: profileShareText) {
+                    Label("Share Profile", systemImage: "square.and.arrow.up")
+                }
+                Button {
+                    UIPasteboard.general.string = "@\(profileUsername)"
+                    haptic.impactOccurred()
+                } label: {
+                    Label("Copy Username", systemImage: "at")
+                }
+            } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
@@ -449,6 +469,7 @@ struct NFTGridItemView: View {
     let geometry: GeometryProxy
     @State private var isPressed = false
     @State private var imageLoaded = false
+    @State private var isFavorited = false
     private let haptic = UIImpactFeedbackGenerator(style: .light)
 
     private let imagePaths = [
@@ -464,7 +485,7 @@ struct NFTGridItemView: View {
     ]
 
     var body: some View {
-        NavigationLink(destination: NFTDetailView(index: index)) {
+        NavigationLink(destination: NFTDetailView(index: index, imageName: imagePaths[safe: index] ?? "New")) {
             ZStack {
                 // Background
                 Rectangle()
@@ -501,10 +522,13 @@ struct NFTGridItemView: View {
                         Spacer()
                         Button(action: {
                             haptic.impactOccurred()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                isFavorited.toggle()
+                            }
                         }) {
-                            Image(systemName: "heart")
+                            Image(systemName: isFavorited ? "heart.fill" : "heart")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
+                                .foregroundColor(isFavorited ? .red : .white)
                                 .padding(8)
                                 .background(Color.black.opacity(0.5))
                                 .clipShape(Circle())
@@ -594,7 +618,10 @@ struct SettingsView: View {
 
 struct NFTDetailView: View {
     let index: Int
+    var imageName: String = "New"
     @Environment(\.dismiss) private var dismiss
+    @State private var showPurchaseConfirmation = false
+    @State private var isPurchased = false
 
     var body: some View {
         ZStack {
@@ -609,7 +636,7 @@ struct NFTDetailView: View {
                             .aspectRatio(1, contentMode: .fit)
                         
                         FallbackAsyncImage(
-                            imageName: "nft-image",
+                            imageName: imageName,
                             contentMode: .fit,
                             cornerRadius: 16
                         )
@@ -684,12 +711,14 @@ struct NFTDetailView: View {
                         }
 
                         // Buy button
-                        Button(action: {}) {
+                        Button(action: {
+                            showPurchaseConfirmation = true
+                        }) {
                             HStack {
-                                Image(systemName: "creditcard.fill")
+                                Image(systemName: isPurchased ? "checkmark.circle.fill" : "creditcard.fill")
                                     .font(.system(size: 18, weight: .medium))
-                                
-                                Text("Buy Now for 0.\(index + 1) ETH")
+
+                                Text(isPurchased ? "Purchased" : "Buy Now for 0.\(index + 1) ETH")
                                     .font(.system(size: 18, weight: .semibold))
                             }
                             .foregroundColor(.white)
@@ -697,14 +726,28 @@ struct NFTDetailView: View {
                             .frame(height: 56)
                             .background(
                                 LinearGradient(
-                                    colors: [.blue, .purple],
+                                    colors: isPurchased ? [.green, .teal] : [.blue, .purple],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                             .cornerRadius(16)
                         }
+                        .disabled(isPurchased)
                         .padding(.top, 20)
+                        .confirmationDialog(
+                            "Buy this NFT for 0.\(index + 1) ETH?",
+                            isPresented: $showPurchaseConfirmation,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Confirm Purchase") {
+                                // Mock purchase — no backend exists yet
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isPurchased = true
+                                }
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
@@ -747,12 +790,5 @@ struct PropertyView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.white.opacity(0.05))
         )
-    }
-}
-
-// MARK: - Array Extension for Safe Access
-extension Array {
-    subscript(safe index: Index) -> Element? {
-        return indices.contains(index) ? self[index] : nil
     }
 }

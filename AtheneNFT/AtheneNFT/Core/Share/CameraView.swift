@@ -5,16 +5,16 @@ struct CameraView: View {
     @Binding var selectedImage: UIImage?
     @Binding var isPresented: Bool
     @StateObject private var camera = CameraModel()
-    
+
     var body: some View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all)
-            
+
             VStack {
                 ZStack {
                     CameraPreview(camera: camera)
                         .ignoresSafeArea()
-                    
+
                     VStack {
                         HStack {
                             Button {
@@ -25,14 +25,14 @@ struct CameraView: View {
                                     .font(.title)
                                     .padding()
                             }
-                            
+
                             Spacer()
                         }
-                        
+
                         Spacer()
                     }
                 }
-                
+
                 HStack {
                     Button {
                         camera.capturePhoto()
@@ -41,7 +41,7 @@ struct CameraView: View {
                             Circle()
                                 .fill(Color.white)
                                 .frame(width: 65, height: 65)
-                            
+
                             Circle()
                                 .stroke(Color.white, lineWidth: 2)
                                 .frame(width: 75, height: 75)
@@ -61,6 +61,19 @@ struct CameraView: View {
                 isPresented = false
             }
         }
+        .alert("Camera Access Needed", isPresented: $camera.alert) {
+            Button("OK", role: .cancel) { isPresented = false }
+        } message: {
+            Text("Enable camera access for AtheneNFT in Settings to take photos.")
+        }
+        .alert("Camera Error", isPresented: Binding(
+            get: { camera.errorMessage != nil },
+            set: { if !$0 { camera.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(camera.errorMessage ?? "")
+        }
     }
 }
 
@@ -70,73 +83,67 @@ class CameraModel: NSObject, ObservableObject {
     @Published var session = AVCaptureSession()
     @Published var alert = false
     @Published var output = AVCapturePhotoOutput()
-    @Published var preview: AVCaptureVideoPreviewLayer!
     @Published var capturedImage: UIImage?
-    
-    override init() {
-        super.init()
-    }
-    
+    @Published var errorMessage: String?
+
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             setUp()
-            return
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { status in
-                if status {
-                    Task { @MainActor in
-                        self.setUp()
-                    }
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                guard granted else { return }
+                Task { @MainActor [weak self] in
+                    self?.setUp()
                 }
             }
-        case .denied:
-            self.alert = true
-            return
+        case .denied, .restricted:
+            alert = true
         default:
             return
         }
     }
-    
+
     func setUp() {
         Task {
             do {
                 try await configureSession()
             } catch {
-                print(error.localizedDescription)
+                errorMessage = error.localizedDescription
             }
         }
     }
-    
+
     nonisolated func configureSession() async throws {
         let session = AVCaptureSession()
         session.beginConfiguration()
-        
+
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             throw NSError(domain: "CameraError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Camera not available"])
         }
-        
+
         let input = try AVCaptureDeviceInput(device: device)
         let output = AVCapturePhotoOutput()
-        
+
         if session.canAddInput(input) {
             session.addInput(input)
         }
-        
+
         if session.canAddOutput(output) {
             session.addOutput(output)
         }
-        
+
         session.commitConfiguration()
-        
+        // startRunning blocks, so it stays off the main actor; publish the
+        // configured session afterward so the preview layer can attach to it.
+        session.startRunning()
+
         await MainActor.run {
             self.session = session
             self.output = output
         }
-        
-        session.startRunning()
     }
-    
+
     func capturePhoto() {
         self.output.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
     }
@@ -144,12 +151,20 @@ class CameraModel: NSObject, ObservableObject {
 
 extension CameraModel: AVCapturePhotoCaptureDelegate {
     nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        if error != nil {
+        if let error {
+            Task { @MainActor in
+                self.errorMessage = "Photo capture failed: \(error.localizedDescription)"
+            }
             return
         }
-        
-        guard let imageData = photo.fileDataRepresentation() else { return }
-        
+
+        guard let imageData = photo.fileDataRepresentation() else {
+            Task { @MainActor in
+                self.errorMessage = "Photo capture failed: no image data was produced."
+            }
+            return
+        }
+
         Task { @MainActor in
             self.capturedImage = UIImage(data: imageData)
             self.isTaken = true
@@ -160,26 +175,26 @@ extension CameraModel: AVCapturePhotoCaptureDelegate {
 
 struct CameraPreview: UIViewRepresentable {
     @ObservedObject var camera: CameraModel
-    
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        view.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-        
-        camera.preview = AVCaptureVideoPreviewLayer(session: camera.session)
-        camera.preview.frame = view.frame
-        camera.preview.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(camera.preview)
-        
-        let parent = UIView()
-        parent.addSubview(view)
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.widthAnchor.constraint(equalToConstant: UIScreen.main.bounds.width).isActive = true
-        view.heightAnchor.constraint(equalToConstant: UIScreen.main.bounds.height).isActive = true
-        view.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 0).isActive = true
-        view.topAnchor.constraint(equalTo: parent.topAnchor, constant: 0).isActive = true
-        
-        return parent
+
+    final class PreviewView: UIView {
+        // Backing the view with AVCaptureVideoPreviewLayer guarantees the cast.
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.backgroundColor = .black
+        view.previewLayer.videoGravity = .resizeAspectFill
+        view.previewLayer.session = camera.session
+        return view
+    }
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        // The model swaps in the configured session after async setup; reattach
+        // so the preview shows the live feed instead of the initial empty session.
+        if uiView.previewLayer.session !== camera.session {
+            uiView.previewLayer.session = camera.session
+        }
+    }
 }

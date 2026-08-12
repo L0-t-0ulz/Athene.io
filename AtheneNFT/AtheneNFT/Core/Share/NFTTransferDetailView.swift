@@ -7,7 +7,14 @@ struct NFTTransferDetailView: View {
     @State private var recipientAddress = ""
     @State private var showingTransferConfirmation = false
     @State private var isTransferring = false
-    
+
+    /// Basic EVM address shape: 0x + 40 hex characters.
+    private var isAddressValid: Bool {
+        recipientAddress.hasPrefix("0x")
+            && recipientAddress.count == 42
+            && recipientAddress.dropFirst(2).allSatisfy { $0.isHexDigit }
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -71,9 +78,17 @@ struct NFTTransferDetailView: View {
                         
                         TextField("0x...", text: $recipientAddress)
                             .font(.system(.body, design: .monospaced))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                             .padding()
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
+
+                        if !recipientAddress.isEmpty && !isAddressValid {
+                            Text("Enter a valid address: 0x followed by 40 hex characters.")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
                     }
                     .padding(.horizontal)
                     
@@ -110,7 +125,7 @@ struct NFTTransferDetailView: View {
                     
                     // Transfer Button
                     Button(action: {
-                        if selectedNFT != nil && !recipientAddress.isEmpty {
+                        if selectedNFT != nil && isAddressValid {
                             showingTransferConfirmation = true
                         }
                     }) {
@@ -130,12 +145,12 @@ struct NFTTransferDetailView: View {
                                 .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(selectedNFT != nil && !recipientAddress.isEmpty ? Color.blue : Color.gray)
+                                .background(selectedNFT != nil && isAddressValid ? Color.blue : Color.gray)
                                 .foregroundColor(.white)
                                 .cornerRadius(16)
                         }
                     }
-                    .disabled(selectedNFT == nil || recipientAddress.isEmpty || isTransferring)
+                    .disabled(selectedNFT == nil || !isAddressValid || isTransferring)
                     .padding(.horizontal)
                     
                     // Warning
@@ -174,9 +189,9 @@ struct NFTTransferDetailView: View {
     
     func performTransfer() {
         isTransferring = true
-        
+
         // Simulate transfer
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + MockLatency.transfer) {
             isTransferring = false
             isPresented = false
         }

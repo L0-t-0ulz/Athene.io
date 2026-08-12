@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import os
 
 // MARK: - UIImage Extensions
 extension UIImage {
@@ -133,14 +134,17 @@ extension UIImage {
                 UIColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0).cgColor
             ]
             
-            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                    colors: colors as CFArray,
-                                    locations: [0.0, 1.0])!
-            
-            context.cgContext.drawLinearGradient(gradient,
-                                               start: CGPoint(x: 0, y: 0),
-                                               end: CGPoint(x: size.width, y: size.height),
-                                               options: [])
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                         colors: colors as CFArray,
+                                         locations: [0.0, 1.0]) {
+                context.cgContext.drawLinearGradient(gradient,
+                                                     start: CGPoint(x: 0, y: 0),
+                                                     end: CGPoint(x: size.width, y: size.height),
+                                                     options: [])
+            } else {
+                UIColor(red: 0.15, green: 0.12, blue: 0.25, alpha: 1.0).setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
             
             // Add icon
             let iconSize = min(size.width, size.height) * 0.3
@@ -166,20 +170,23 @@ extension UIImage {
                 UIColor(red: 0.3, green: 0.2, blue: 0.1, alpha: 1.0).cgColor
             ]
             
-            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                    colors: colors as CFArray,
-                                    locations: [0.0, 1.0])!
-            
             let rect = CGRect(origin: .zero, size: size)
             context.cgContext.addEllipse(in: rect)
             context.cgContext.clip()
-            
-            context.cgContext.drawRadialGradient(gradient,
-                                               startCenter: CGPoint(x: size.width * 0.3, y: size.height * 0.3),
-                                               startRadius: 0,
-                                               endCenter: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
-                                               endRadius: size.width * 0.7,
-                                               options: [])
+
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                         colors: colors as CFArray,
+                                         locations: [0.0, 1.0]) {
+                context.cgContext.drawRadialGradient(gradient,
+                                                     startCenter: CGPoint(x: size.width * 0.3, y: size.height * 0.3),
+                                                     startRadius: 0,
+                                                     endCenter: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
+                                                     endRadius: size.width * 0.7,
+                                                     options: [])
+            } else {
+                UIColor(red: 0.45, green: 0.3, blue: 0.15, alpha: 1.0).setFill()
+                context.cgContext.fill(rect)
+            }
             
             // Add initials
             let attributes: [NSAttributedString.Key: Any] = [
@@ -236,11 +243,16 @@ extension Image {
 
 // MARK: - Image Loading Utilities
 struct ImageLoadingUtility {
-    
+
+    private static let logger = Logger(subsystem: "com.zayankhan12.AtheneNFT", category: "ImageLoading")
+
     /// Load image from URL with caching
     static func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
         URLSession.shared.dataTask(with: url) { data, response, error in
             guard let data = data, error == nil else {
+                if let error {
+                    Self.logger.error("Image download failed for \(url, privacy: .public): \(error, privacy: .public)")
+                }
                 DispatchQueue.main.async {
                     completion(nil)
                 }
@@ -257,20 +269,23 @@ struct ImageLoadingUtility {
     /// Save image to documents directory
     static func saveImage(_ image: UIImage, withName name: String) -> Bool {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            logger.error("saveImage failed: documents directory unavailable")
             return false
         }
-        
+
         let fileName = name + ".jpg"
         let fileURL = documentsDirectory.appendingPathComponent(fileName)
-        
+
         guard let data = image.jpegData(compressionQuality: 0.8) else {
+            logger.error("saveImage failed: could not encode \(fileName, privacy: .public) as JPEG")
             return false
         }
-        
+
         do {
             try data.write(to: fileURL)
             return true
         } catch {
+            logger.error("saveImage failed writing \(fileName, privacy: .public): \(error, privacy: .public)")
             return false
         }
     }

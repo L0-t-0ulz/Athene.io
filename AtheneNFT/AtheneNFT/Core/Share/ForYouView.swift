@@ -151,7 +151,8 @@ struct NFTPost: Identifiable {
 struct NFTFeedPostView: View {
     let post: NFTPost
     @State private var isLiked = false
-    
+    @State private var showComments = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // User info header
@@ -170,7 +171,16 @@ struct NFTFeedPostView: View {
                 Spacer()
                 
                 // Options button
-                Button(action: {}) {
+                Menu {
+                    ShareLink(item: "Check out \"\(post.title)\" by \(post.creatorName) on AtheneNFT") {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    Button {
+                        UIPasteboard.general.string = post.title
+                    } label: {
+                        Label("Copy Title", systemImage: "doc.on.doc")
+                    }
+                } label: {
                     Image(systemName: "ellipsis")
                         .foregroundColor(.white)
                 }
@@ -193,20 +203,25 @@ struct NFTFeedPostView: View {
                         .foregroundColor(isLiked ? .red : .white)
                 }
                 
-                Button(action: {}) {
+                Button(action: { showComments = true }) {
                     Image(systemName: "bubble.right")
                         .foregroundColor(.white)
                 }
-                
-                Button(action: {}) {
+
+                ShareLink(item: "Check out \"\(post.title)\" by \(post.creatorName) on AtheneNFT") {
                     Image(systemName: "arrow.up")
                         .foregroundColor(.white)
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal, 16)
             .font(.system(size: 22))
+            .alert("Comments", isPresented: $showComments) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Comments are coming soon.")
+            }
             
             // Title and description
             VStack(alignment: .leading, spacing: 4) {

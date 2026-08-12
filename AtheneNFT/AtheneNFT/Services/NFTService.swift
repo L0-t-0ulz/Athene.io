@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Combine
 
 // MARK: - Custom Errors
@@ -64,17 +65,46 @@ struct FollowResponse: Codable {
 }
 
 // MARK: - Network Configuration
+/// Placeholder configuration — no real backend exists yet. Every public
+/// NFTService method returns mock data; the URLSession layer below is unwired.
 struct NetworkConfig {
-    static let baseURL = "https://api.yourbackend.com"
+    static let baseURL = "https://api.yourbackend.com" // placeholder, replace when the API exists
+    static let shareBaseURL = "https://your-app.com"   // placeholder share-link domain
     static let timeout: TimeInterval = 30.0
     static let retryAttempts = 3
+
+    /// Auth token for API requests. Must be loaded from the Keychain once a
+    /// real backend exists — never hardcode credentials here.
+    static var authToken: String? { nil }
+}
+
+/// Simulated network latency (seconds) used by the mock layer while no backend
+/// exists. Named so views don't sprinkle magic numbers.
+enum MockLatency {
+    static let fetch: TimeInterval = 0.5
+    static let userNFTs: TimeInterval = 0.3
+    static let search: TimeInterval = 0.4
+    static let interaction: TimeInterval = 0.2
+    static let follow: TimeInterval = 0.25
+    static let notifications: TimeInterval = 0.3
+    static let markRead: TimeInterval = 0.1
+    static let create: TimeInterval = 2.0
+    static let walletConnect: TimeInterval = 0.3
+    static let transfer: TimeInterval = 2.0
+    static let uploadSettle: TimeInterval = 1.0
 }
 
 // MARK: - NFT Service
+/// Main-actor bound because it publishes `isLoading`/`errorMessage` straight
+/// into SwiftUI views and all mock publishers deliver on the main queue.
+/// Revisit the isolation (move networking off-main) when a real backend lands.
 @MainActor
 class NFTService: ObservableObject {
     static let shared = NFTService()
-    
+    static let logger = Logger(subsystem: "com.zayankhan12.AtheneNFT", category: "NFTService")
+    /// Largest image accepted by createNFT (raw bytes, before base64 inflation).
+    static let maxImageBytes = 10 * 1024 * 1024
+
     private let baseURL = NetworkConfig.baseURL
     private var cancellables = Set<AnyCancellable>()
     private let session: URLSession
@@ -106,7 +136,9 @@ class NFTService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer YOUR_API_TOKEN", forHTTPHeaderField: "Authorization")
+        if let token = NetworkConfig.authToken {
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         if let body = body {
             request.httpBody = body
@@ -131,7 +163,7 @@ class NFTService: ObservableObject {
                     decoder.dateDecodingStrategy = .iso8601
                     return try decoder.decode(T.self, from: data)
                 } catch {
-                    print("Decoding error: \(error)")
+                    Self.logger.error("Decoding error: \(error, privacy: .public)")
                     throw NFTServiceError.decodingError
                 }
             }
@@ -154,7 +186,7 @@ class NFTService: ObservableObject {
         
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.fetch), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -177,7 +209,7 @@ class NFTService: ObservableObject {
         
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.userNFTs), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -191,9 +223,12 @@ class NFTService: ObservableObject {
             nft.creator.displayName.localizedCaseInsensitiveContains(query)
         }
         
+        // Guard the range construction itself: for an out-of-range page,
+        // startIndex exceeds endIndex and `startIndex..<endIndex` would trap
+        // before the safe subscript could clamp anything.
         let startIndex = (page - 1) * pageSize
         let endIndex = min(startIndex + pageSize, filteredNFTs.count)
-        let pageItems = Array(filteredNFTs[safe: startIndex..<endIndex])
+        let pageItems = startIndex < endIndex ? Array(filteredNFTs[safe: startIndex..<endIndex]) : []
         
         let mockResponse = PaginatedResponse<NFT>(
             items: pageItems,
@@ -205,7 +240,7 @@ class NFTService: ObservableObject {
         
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(400), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.search), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -216,80 +251,77 @@ class NFTService: ObservableObject {
             return Fail(error: NFTServiceError.networkError("Invalid input parameters"))
                 .eraseToAnyPublisher()
         }
-        
-        let imageBase64 = image.base64EncodedString()
-        let _ = CreateNFTRequest(
-            title: title,
-            description: description,
-            price: price,
-            blockchain: blockchain.rawValue,
-            imageData: imageBase64
-        )
-        
+
+        guard image.count <= Self.maxImageBytes else {
+            return Fail(error: NFTServiceError.networkError("Image is too large (max 10 MB)"))
+                .eraseToAnyPublisher()
+        }
+
         // Mock successful creation
         let mockNFT = NFT(
             id: UUID().uuidString,
             title: title,
             description: description,
-            imageURL: "https://picsum.photos/500",
+            imageURL: Self.mockAssetNames[title.count % Self.mockAssetNames.count],
             price: price,
             creator: getMockUser(),
             createdAt: Date(),
             blockchain: blockchain,
             contract: "0x123abc",
-            tokenId: String(Int.random(in: 1...1000))
+            tokenId: String((title.count * 37) % 1000 + 1)
         )
         
         return Just(mockNFT)
             .setFailureType(to: Error.self)
-            .delay(for: .seconds(2), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.create), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
     // Share NFT
-    func shareNFT(nft: NFT) -> URL {
-        let baseShareURL = "https://your-app.com/nft"
-        let shareURL = "\(baseShareURL)/\(nft.id)?title=\(nft.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-        return URL(string: shareURL) ?? URL(string: baseShareURL)!
+    func shareNFT(nft: NFT) -> URL? {
+        var components = URLComponents(string: NetworkConfig.shareBaseURL)
+        components?.path = "/nft/\(nft.id)"
+        components?.queryItems = [URLQueryItem(name: "title", value: nft.title)]
+        return components?.url
     }
     
     // Like NFT
     func likeNFT(nftId: String) -> AnyPublisher<LikeResponse, Error> {
-        let mockResponse = LikeResponse(isLiked: true, likeCount: Int.random(in: 1...100))
-        
+        let mockResponse = LikeResponse(isLiked: true, likeCount: 42)
+
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(200), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.interaction), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-    
+
     // Unlike NFT
     func unlikeNFT(nftId: String) -> AnyPublisher<LikeResponse, Error> {
-        let mockResponse = LikeResponse(isLiked: false, likeCount: Int.random(in: 0...99))
-        
+        let mockResponse = LikeResponse(isLiked: false, likeCount: 41)
+
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(200), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.interaction), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-    
+
     // Follow user
     func followUser(userId: String) -> AnyPublisher<FollowResponse, Error> {
-        let mockResponse = FollowResponse(isFollowing: true, followerCount: Int.random(in: 1...5000))
-        
+        let mockResponse = FollowResponse(isFollowing: true, followerCount: 1200)
+
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(250), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.follow), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-    
+
     // Unfollow user
     func unfollowUser(userId: String) -> AnyPublisher<FollowResponse, Error> {
-        let mockResponse = FollowResponse(isFollowing: false, followerCount: Int.random(in: 0...4999))
-        
+        let mockResponse = FollowResponse(isFollowing: false, followerCount: 1199)
+
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(250), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.follow), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -305,7 +337,7 @@ class NFTService: ObservableObject {
         
         return Just(mockResponse)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.notifications), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -313,22 +345,33 @@ class NFTService: ObservableObject {
     func markNotificationAsRead(notificationId: String) -> AnyPublisher<Bool, Error> {
         return Just(true)
             .setFailureType(to: Error.self)
-            .delay(for: .milliseconds(100), scheduler: DispatchQueue.main)
+            .delay(for: .seconds(MockLatency.markRead), scheduler: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
 }
 
-// MARK: - Safe Array Extension
+// MARK: - Safe Array Access
+// Both safe-subscript forms live here (index form previously duplicated in
+// ProfileView.swift).
 extension Array {
     subscript(safe range: Range<Index>) -> ArraySlice<Element> {
         let start = Swift.max(range.lowerBound, startIndex)
         let end = Swift.min(range.upperBound, endIndex)
         return start < end ? self[start..<end] : ArraySlice<Element>()
     }
+
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
 }
 
 // MARK: - Mock Data Extension
+// All factories are deterministic (index-derived, no randomness) so the UI is
+// stable run to run and unit tests can assert on the output.
 extension NFTService {
+    /// Bundled asset names used by mock content instead of external image services.
+    static let mockAssetNames = ["New", "Trending", "Cards", "Doge", "Gifs", "Celebrities"]
+
     func getMockNFTs(count: Int) -> [NFT] {
         var nfts = [NFT]()
         let titles = ["Amazing Artwork", "Digital Dreams", "Crypto Masterpiece", "Abstract Vision", "Future Art", "Pixel Paradise", "Color Explosion", "Minimal Beauty", "Cosmic Journey", "Urban Landscape"]
@@ -339,34 +382,34 @@ extension NFTService {
             "Created using cutting-edge digital techniques and artistic vision.",
             "A masterpiece that represents the future of digital art."
         ]
-        
+
         for i in 0..<count {
             let titleIndex = i % titles.count
             let descIndex = i % descriptions.count
-            
+
             nfts.append(
                 NFT(
-                    id: UUID().uuidString,
+                    id: "mock-nft-\(i)",
                     title: "\(titles[titleIndex]) #\(i + 1)",
                     description: descriptions[descIndex],
-                    imageURL: "https://picsum.photos/id/\(10 + i)/500",
-                    price: Double.random(in: 0.1...10.0),
-                    creator: getMockUser(),
+                    imageURL: Self.mockAssetNames[i % Self.mockAssetNames.count],
+                    price: 0.1 + Double(i % 20) * 0.5,
+                    creator: getMockUser(seed: i),
                     createdAt: Date().addingTimeInterval(-Double(i * 86400)),
-                    blockchain: BlockchainType.allCases.randomElement() ?? .ethereum,
-                    contract: "0x\(String(format: "%06x", Int.random(in: 0...0xFFFFFF)))",
+                    blockchain: BlockchainType.allCases[i % BlockchainType.allCases.count],
+                    contract: "0x\(String(format: "%06x", (i * 0x1F3B) % 0xFFFFFF))",
                     tokenId: String(i + 1),
-                    isLiked: Bool.random(),
-                    likeCount: Int.random(in: 0...500),
-                    isCollected: Bool.random()
+                    isLiked: i % 3 == 0,
+                    likeCount: (i * 37) % 500,
+                    isCollected: i % 4 == 0
                 )
             )
         }
-        
+
         return nfts
     }
-    
-    func getMockUser(id: String? = nil) -> User {
+
+    func getMockUser(id: String? = nil, seed: Int = 0) -> User {
         let usernames = ["artist", "creator", "designer", "collector", "painter", "sculptor", "photographer", "illustrator"]
         let displayNames = ["Digital Artist", "NFT Creator", "Abstract Designer", "Art Collector", "Modern Painter", "3D Sculptor", "Photo Artist", "Vector Illustrator"]
         let locations = ["San Francisco, CA", "New York, NY", "Los Angeles, CA", "Austin, TX", "Seattle, WA", "Miami, FL", "Denver, CO", "Portland, OR"]
@@ -377,42 +420,42 @@ extension NFTService {
             "Building the future of digital art",
             "Collector and creator of unique digital pieces"
         ]
-        
-        let randomIndex = Int.random(in: 0..<usernames.count)
-        
+
+        let index = abs(seed) % usernames.count
+
         return User(
-            id: id ?? UUID().uuidString,
-            username: "@\(usernames[randomIndex])\(Int.random(in: 100...999))",
-            displayName: displayNames[randomIndex],
-            profileImage: "https://i.pravatar.cc/150?img=\(Int.random(in: 1...70))",
-            bio: bios.randomElement(),
-            location: locations.randomElement(),
-            followerCount: Int.random(in: 100...50000),
-            followingCount: Int.random(in: 10...1000),
-            isVerified: Bool.random()
+            id: id ?? "mock-user-\(index)",
+            username: "@\(usernames[index])\(100 + index)",
+            displayName: displayNames[index],
+            profileImage: "Profile",
+            bio: bios[index % bios.count],
+            location: locations[index],
+            followerCount: 100 + (seed * 613) % 49900,
+            followingCount: 10 + (seed * 89) % 990,
+            isVerified: seed % 2 == 0
         )
     }
-    
+
     func getMockNotifications(count: Int) -> [Notification] {
         var notifications = [Notification]()
         let types = NotificationType.allCases
-        
+
         for i in 0..<count {
-            let randomType = types.randomElement() ?? .like
+            let type = types[i % types.count]
             let mockNFTs = getMockNFTs(count: 1)
-            
+
             notifications.append(
                 Notification(
-                    id: UUID().uuidString,
-                    type: randomType,
-                    user: getMockUser(),
-                    nft: randomType == .follow ? nil : mockNFTs.first,
-                    timestamp: Date().addingTimeInterval(-Double(i * 3600 + Int.random(in: 0...3600))),
-                    isRead: Bool.random()
+                    id: "mock-notification-\(i)",
+                    type: type,
+                    user: getMockUser(seed: i),
+                    nft: type == .follow ? nil : mockNFTs.first,
+                    timestamp: Date().addingTimeInterval(-Double(i * 5 * 3600)),
+                    isRead: i % 2 == 0
                 )
             )
         }
-        
+
         return notifications.sorted { $0.timestamp > $1.timestamp }
     }
 }

@@ -91,20 +91,33 @@ struct WalletTransferView: View {
                         action: { selectWallet(.walletConnect) }
                     )
                     
-                    Divider()
-                    
-                    // Show More Options button
-                    Button(action: {
-                        withAnimation {
-                            showMoreOptions = true
+                    if showMoreOptions {
+                        // The remaining wallet options, revealed on demand
+                        ForEach([WalletType.trustWallet, .rainbow, .argent, .coinbase], id: \.self) { wallet in
+                            Divider()
+
+                            WalletOptionRow(
+                                wallet: wallet,
+                                isSelected: selectedWallet == wallet,
+                                action: { selectWallet(wallet) }
+                            )
                         }
-                    }) {
-                        Text("Show More Options")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                            .padding(.vertical, 16)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.white)
+                    } else {
+                        Divider()
+
+                        // Show More Options button
+                        Button(action: {
+                            withAnimation {
+                                showMoreOptions = true
+                            }
+                        }) {
+                            Text("Show More Options")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                                .padding(.vertical, 16)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.white)
+                        }
                     }
                 }
             }
@@ -124,7 +137,7 @@ struct WalletTransferView: View {
     func selectWallet(_ wallet: WalletType) {
         selectedWallet = wallet
         // Simulate connection and show next screen after brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + MockLatency.walletConnect) {
             showTransferDetail = true
         }
     }

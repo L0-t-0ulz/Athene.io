@@ -94,8 +94,19 @@ func generateSampleNFTItems(count: Int, startIndex: Int = 0) -> [NFTItem] {
             title: sampleTitles[adjustedIndex % sampleTitles.count],
             creator: sampleCreators[adjustedIndex % sampleCreators.count],
             creatorUsername: sampleUsernames[adjustedIndex % sampleUsernames.count],
-            imageName: "Image@\(Int.random(in: 1...25))"
+            imageName: "Image@\((adjustedIndex % 25) + 1)"
         )
+    }
+}
+
+// MARK: - Avatar Initial Helper
+extension String {
+    /// First letter for an avatar badge: strips a leading "@" if present,
+    /// capitalizes, and falls back to "?" so empty usernames never render blank.
+    var avatarInitial: String {
+        let name = hasPrefix("@") ? String(dropFirst()) : self
+        guard let first = name.first else { return "?" }
+        return String(first).capitalized
     }
 }
 
@@ -144,12 +155,11 @@ struct User: Identifiable, Codable, Hashable {
     }
     
     var initials: String {
-        let components = displayName.components(separatedBy: " ")
-        if components.count >= 2 {
-            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
-        } else {
-            return String(displayName.prefix(2)).uppercased()
+        let words = displayName.split(separator: " ").filter { !$0.isEmpty }
+        if words.count >= 2 {
+            return (words[0].prefix(1) + words[1].prefix(1)).uppercased()
         }
+        return String(displayName.trimmingCharacters(in: .whitespaces).prefix(2)).uppercased()
     }
 }
 

@@ -109,7 +109,16 @@ struct NFTCardView: View {
             Spacer()
             
             // Options menu
-            Button(action: {}) {
+            Menu {
+                ShareLink(item: "Check out \"\(title)\" by \(creator) on AtheneNFT") {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                Button {
+                    UIPasteboard.general.string = title
+                } label: {
+                    Label("Copy Title", systemImage: "doc.on.doc")
+                }
+            } label: {
                 Image(systemName: "ellipsis")
                     .foregroundColor(.white.opacity(0.7))
                     .font(.system(size: 16, weight: .medium))
@@ -263,24 +272,24 @@ struct NFTCardView: View {
     // MARK: - Helper Methods
     
     private func checkImageLoad() {
-        // Simulate image loading check
+        // Single simulated load check — resolves to loaded OR error exactly once
+        // (previously two racing timers could show success then flip to error).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation {
-                isImageLoaded = true
-            }
-        }
-        
-        // Check for actual image load error using ImageLoader
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             if ImageLoader.loadImage(named: imageName) == nil {
                 imageLoadError = true
+            } else {
+                withAnimation {
+                    isImageLoaded = true
+                }
             }
         }
     }
 }
 
-// MARK: - NFT Item Model
-struct NFTItem: Identifiable {
+// MARK: - NFT Card Item Model
+// Named NFTCardItem to avoid colliding with Models/NFT.swift's NFTItem if this
+// file is ever added to the app target.
+struct NFTCardItem: Identifiable {
     let id = UUID()
     let title: String
     let creator: String
@@ -290,7 +299,7 @@ struct NFTItem: Identifiable {
 
 // MARK: - NFT Grid Container with Scroll Features
 struct ScrollableNFTGrid: View {
-    let nftItems: [NFTItem]
+    let nftItems: [NFTCardItem]
     let columns: Int
     @State private var scrollPosition: CGFloat = 0
     @State private var showScrollToTop = false
@@ -412,7 +421,7 @@ struct NFTCardView_Previews: PreviewProvider {
             // Scrollable grid
             ScrollableNFTGrid(
                 nftItems: [
-                    NFTItem(title: "Test NFT", creator: "Creator", creatorUsername: "@creator", imageName: "Cards")
+                    NFTCardItem(title: "Test NFT", creator: "Creator", creatorUsername: "@creator", imageName: "Cards")
                 ],
                 columns: 1
             )

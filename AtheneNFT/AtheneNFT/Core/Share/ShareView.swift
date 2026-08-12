@@ -158,9 +158,16 @@ struct ShareView: View {
             )
             .onChange(of: selectedItem) { oldItem, newItem in
                 Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self),
-                       let uiImage = UIImage(data: data) {
-                        viewModel.image = uiImage
+                    guard let newItem else { return }
+                    do {
+                        if let data = try await newItem.loadTransferable(type: Data.self),
+                           let uiImage = UIImage(data: data) {
+                            viewModel.image = uiImage
+                        } else {
+                            viewModel.errorMessage = "That photo couldn't be loaded. Try a different one."
+                        }
+                    } catch {
+                        viewModel.errorMessage = "Photo failed to load: \(error.localizedDescription)"
                     }
                 }
             }

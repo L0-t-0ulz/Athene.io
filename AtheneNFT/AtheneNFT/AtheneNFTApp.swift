@@ -1,12 +1,15 @@
 import SwiftUI
 import Combine
 import UIKit
+import os
 
 @main
 struct AtheneNFTApp: App {
-    
+
     @StateObject private var fontManager = FontManager.shared
-    
+
+    private static let logger = Logger(subsystem: "com.zayankhan12.AtheneNFT", category: "App")
+
      var body: some Scene {
         WindowGroup {
             MainTabView()
@@ -15,16 +18,17 @@ struct AtheneNFTApp: App {
                 .onAppear {
                     setupApp()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+                    Self.logger.info("Memory warning received — clearing URL cache")
+                    URLCache.shared.removeAllCachedResponses()
+                }
         }
     }
-    
+
     /// Initialize app-wide configurations
     private func setupApp() {
         // Configure app appearance
         configureAppearance()
-        
-        // Setup memory management
-        setupMemoryManagement()
     }
     
     /// Configure global app appearance
@@ -51,17 +55,6 @@ struct AtheneNFTApp: App {
         UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
     }
     
-    /// Setup memory management observers
-    private func setupMemoryManagement() {
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            // Clear caches when memory warning is received
-            print("Memory warning received, clearing caches")
-        }
-    }
 }
 
 // MARK: - Font management for the app
@@ -75,8 +68,9 @@ class FontManager: ObservableObject {
     }
     
     private func loadCustomFonts() {
-        // In a real app, you would load custom fonts here
-        // For this example, we'll use system fonts
+        // Noto Sans is not bundled, so every Font.custom("Noto Sans", …) call
+        // silently falls back to the system font. Bundle the font files and
+        // register them here to render the real typeface.
         DispatchQueue.main.async {
             self.fontsLoaded = true
         }

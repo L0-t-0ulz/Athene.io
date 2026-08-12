@@ -50,10 +50,15 @@ struct DiscoverView: View {
     @State private var isSearching = false
     @State private var selectedCategory: NFTCategory? = nil
     @State private var showSearchView = false
-    @StateObject private var nftService = NFTService.shared
-    
+    @State private var viewAllCategory: NFTCategory? = nil
+
     private let haptic = UIImpactFeedbackGenerator(style: .light)
     private let sampleData = SampleNFTData()
+
+    /// Categories shown in the feed — respects the chip/filter selection.
+    private var visibleCategories: [NFTCategory] {
+        selectedCategory.map { [$0] } ?? NFTCategory.allCases
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -96,7 +101,7 @@ struct DiscoverView: View {
                             }
                             
                             // NFT Grid Content - Multiple sections to ensure scrollable height
-                            ForEach(NFTCategory.allCases, id: \.self) { category in
+                            ForEach(visibleCategories, id: \.self) { category in
                                 VStack(alignment: .leading, spacing: 16) {
                                     // Section Header
                                     HStack {
@@ -108,7 +113,8 @@ struct DiscoverView: View {
                                         Spacer()
                                         
                                         Button("View All") {
-                                            // Action
+                                            haptic.impactOccurred()
+                                            viewAllCategory = category
                                         }
                                         .foregroundColor(.blue)
                                         .font(.caption)
@@ -178,9 +184,35 @@ struct DiscoverView: View {
         .sheet(isPresented: $showSearchView) {
             SearchView(searchText: $searchText)
         }
+        .sheet(item: $viewAllCategory) { category in
+            CategoryAllView(category: category)
+        }
     }
     
     // MARK: - View Components
+    @ViewBuilder
+    private var categoryFilterMenuItems: some View {
+        Button {
+            haptic.impactOccurred()
+            selectedCategory = nil
+        } label: {
+            Label("All Categories", systemImage: selectedCategory == nil ? "checkmark" : "square.grid.2x2")
+        }
+        Divider()
+        ForEach(NFTCategory.allCases, id: \.self) { category in
+            Button {
+                haptic.impactOccurred()
+                selectedCategory = category
+            } label: {
+                if selectedCategory == category {
+                    Label(category.displayName, systemImage: "checkmark")
+                } else {
+                    Text(category.displayName)
+                }
+            }
+        }
+    }
+
     private func headerView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
             Color.black
@@ -191,25 +223,22 @@ struct DiscoverView: View {
                     .font(Font.custom("Noto Sans", size: DynamicSizing.fontSize(base: 32, geometry: geometry)).weight(.bold))
                     .foregroundColor(.white)
                 
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        // Toggle category filter or show options
-                    }
-                    haptic.impactOccurred()
-                }) {
+                Menu {
+                    categoryFilterMenuItems
+                } label: {
                     Image(systemName: "chevron.down")
                         .font(.system(size: DynamicSizing.size(base: 18, geometry: geometry), weight: .bold))
                         .foregroundColor(.white)
                         .padding(.leading, 4)
                 }
-                
+
                 Spacer()
-                
+
                 // Filter button
-                Button(action: {
-                    haptic.impactOccurred()
-                }) {
-                    Image(systemName: "line.horizontal.3.decrease.circle")
+                Menu {
+                    categoryFilterMenuItems
+                } label: {
+                    Image(systemName: selectedCategory == nil ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
                         .font(.system(size: DynamicSizing.size(base: 24, geometry: geometry)))
                         .foregroundColor(.white)
                 }
@@ -247,76 +276,44 @@ struct DiscoverView: View {
         .animation(.spring(response: 0.3), value: isSearching)
     }
     
-    private func featuredCategoriesView(geometry: GeometryProxy) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Featured Categories")
-                .font(Font.custom("Noto Sans", size: 24).weight(.bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(NFTCategory.allCases, id: \.self) { category in
-                        CategoryChip(category: category, isSelected: selectedCategory == category) {
-                            selectedCategory = selectedCategory == category ? nil : category
-                            haptic.impactOccurred()
+}
+
+// MARK: - Category "View All" Sheet
+extension NFTCategory: Identifiable {
+    var id: String { rawValue }
+}
+
+struct CategoryAllView: View {
+    let category: NFTCategory
+    @Environment(\.dismiss) private var dismiss
+    private let sampleData = SampleNFTData()
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ], spacing: 16) {
+                        ForEach(sampleData.nfts(for: category), id: \.id) { item in
+                            NFTGridCard(item: item)
                         }
                     }
+                    .padding()
                 }
-                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
+            }
+            .navigationTitle(category.displayName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
-    }
-    
-    private func categorySection(category: NFTCategory, geometry: GeometryProxy) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Section header
-            HStack {
-                Text(category.displayName)
-                    .font(Font.custom("Noto Sans", size: 24).weight(.bold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Button("See All") {
-                    haptic.impactOccurred()
-                }
-                .font(Font.custom("Noto Sans", size: 14).weight(.medium))
-                .foregroundColor(.blue)
-            }
-            .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
-            
-            // User avatars row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(sampleData.getItems(for: category)) { item in
-                        UserCircleView(username: item.username, geometry: geometry)
-                    }
-                }
-                .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
-            }
-            
-            // NFT Cards in grid
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ],
-                spacing: 12
-            ) {
-                ForEach(sampleData.getItems(for: category)) { item in
-                    NFTImageCard(
-                        item: item,
-                        category: category,
-                        geometry: geometry,
-                        onTap: {
-                            haptic.impactOccurred()
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal, DynamicSizing.padding(base: 20, geometry: geometry))
-        }
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -385,9 +382,7 @@ struct UserCircleView: View {
         Button(action: {
             withAnimation(.spring(response: 0.2)) {
                 isPressed = true
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            } completion: {
                 withAnimation(.spring(response: 0.2)) {
                     isPressed = false
                 }
@@ -409,7 +404,7 @@ struct UserCircleView: View {
                         .fill(Color.black)
                         .frame(width: 52, height: 52)
                     
-                    Text(String(username.dropFirst(1).prefix(1)).capitalized)
+                    Text(username.avatarInitial)
                         .font(Font.custom("Noto Sans", size: 20).weight(.semibold))
                         .foregroundColor(.white)
                 }
@@ -435,22 +430,35 @@ struct NFTImageCard: View {
     
     @State private var isPressed = false
     @State private var isLiked = false
-    @State private var likeCount = Int.random(in: 12...156)
-    
+    @State private var likeCount: Int
+
     private let haptic = UIImpactFeedbackGenerator(style: .light)
+
+    init(item: NFTItemData, category: NFTCategory, geometry: GeometryProxy, onTap: @escaping () -> Void) {
+        self.item = item
+        self.category = category
+        self.geometry = geometry
+        self.onTap = onTap
+        // Deterministic per-item mock stats (stable across renders and runs)
+        _likeCount = State(initialValue: 12 + (item.title.count * 7) % 144)
+    }
+
+    /// Deterministic mock bid derived from the item, instead of re-randomizing
+    /// on every render.
+    private var mockBid: Double {
+        0.1 + Double((item.title.count * 13) % 49) / 10.0
+    }
     
     var body: some View {
         Button(action: {
             withAnimation(.spring(response: 0.2)) {
                 isPressed = true
-            }
-            onTap()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            } completion: {
                 withAnimation(.spring(response: 0.2)) {
                     isPressed = false
                 }
             }
+            onTap()
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 // NFT Image with overlay
@@ -501,7 +509,7 @@ struct NFTImageCard: View {
                                     .font(Font.custom("Noto Sans", size: 10))
                                     .foregroundColor(.white.opacity(0.8))
                                 
-                                Text("\(String(format: "%.2f", Double.random(in: 0.1...5.0))) ETH")
+                                Text("\(String(format: "%.2f", mockBid)) ETH")
                                     .font(Font.custom("Noto Sans", size: 12).weight(.semibold))
                                     .foregroundColor(.white)
                             }
@@ -542,7 +550,7 @@ struct NFTImageCard: View {
                             )
                             .frame(width: 20, height: 20)
                             .overlay(
-                                Text(String(item.creator.username.dropFirst(1).prefix(1)).capitalized)
+                                Text(item.creator.username.avatarInitial)
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                             )
@@ -672,8 +680,9 @@ struct SearchView: View {
         guard !searchText.isEmpty else { return }
         
         isSearching = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+
+        // Simulated search latency (no backend yet)
+        DispatchQueue.main.asyncAfter(deadline: .now() + MockLatency.search) {
             let sampleData = SampleNFTData()
             searchResults = sampleData.getAllItems().filter { item in
                 item.title.localizedCaseInsensitiveContains(searchText) ||

@@ -58,17 +58,20 @@ struct ImageLoader {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             // Background gradient
-            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                    colors: [
-                                        UIColor(red: 0.2, green: 0.15, blue: 0.3, alpha: 1.0).cgColor,
-                                        UIColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0).cgColor
-                                    ] as CFArray,
-                                    locations: [0.0, 1.0])!
-            
-            context.cgContext.drawLinearGradient(gradient,
-                                               start: CGPoint(x: 0, y: 0),
-                                               end: CGPoint(x: size.width, y: size.height),
-                                               options: [])
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                         colors: [
+                                             UIColor(red: 0.2, green: 0.15, blue: 0.3, alpha: 1.0).cgColor,
+                                             UIColor(red: 0.1, green: 0.1, blue: 0.2, alpha: 1.0).cgColor
+                                         ] as CFArray,
+                                         locations: [0.0, 1.0]) {
+                context.cgContext.drawLinearGradient(gradient,
+                                                     start: CGPoint(x: 0, y: 0),
+                                                     end: CGPoint(x: size.width, y: size.height),
+                                                     options: [])
+            } else {
+                UIColor(red: 0.15, green: 0.12, blue: 0.25, alpha: 1.0).setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
             
             // Add icon
             let iconSize = min(size.width, size.height) * 0.3
@@ -87,28 +90,26 @@ struct ImageLoader {
 
 // MARK: - Dynamic Sizing Utility
 struct DynamicSizing {
+    /// Single scale rule shared by all sizing helpers: proportional to a
+    /// 390pt-wide baseline, capped at 1.3×.
+    private static func scaled(_ base: CGFloat, geometry: GeometryProxy) -> CGFloat {
+        return base * min(geometry.size.width / 390, 1.3)
+    }
+
     static func fontSize(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
+        return scaled(base, geometry: geometry)
     }
-    
+
     static func size(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
+        return scaled(base, geometry: geometry)
     }
-    
+
     static func padding(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
+        return scaled(base, geometry: geometry)
     }
-    
+
     static func spacing(base: CGFloat, geometry: GeometryProxy) -> CGFloat {
-        let screenWidth = geometry.size.width
-        let scaleFactor = min(screenWidth / 390, 1.3)
-        return base * scaleFactor
+        return scaled(base, geometry: geometry)
     }
 }
 
