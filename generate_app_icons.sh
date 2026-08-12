@@ -1,9 +1,11 @@
 #!/bin/bash
+set -euo pipefail
 
 # This script generates all required iOS app icon sizes from a 1024x1024 source image
 # Usage: ./generate_app_icons.sh source_icon.png
+# Run from the repo root (output path is relative to it).
 
-if [ -z "$1" ]; then
+if [ -z "${1:-}" ]; then
     echo "Usage: ./generate_app_icons.sh source_icon.png"
     echo "Please provide a 1024x1024 PNG image as the source"
     exit 1
