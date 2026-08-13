@@ -5,6 +5,7 @@ on:
     branches: [ "keys" ]
   pull_request:
     branches: [ "keys" ]
+  workflow_dispatch:
 
 env:
   SCHEME: AtheneNFT
